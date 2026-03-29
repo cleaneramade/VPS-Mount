@@ -1,0 +1,50 @@
+{
+  "name": "vps-connector",
+  "version": "1.0.0",
+  "description": "Mount VPS filesystem as a Windows drive letter via SSHFS",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win"
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.vpsconnector.app",
+    "productName": "VPS Connector",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "VPS Connector"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "!scripts/**/*"
+    ]
+  }
+}

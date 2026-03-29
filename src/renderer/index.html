@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self';">
+  <title>VPS Connector</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- Custom Titlebar -->
+    <div class="titlebar">
+      <div class="titlebar-left">
+        <div class="window-controls">
+          <button class="wc-btn wc-close" id="wc-close" title="Close">
+            <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          </button>
+          <button class="wc-btn wc-minimize" id="wc-minimize" title="Minimize">
+            <svg width="8" height="2" viewBox="0 0 8 2"><line x1="0" y1="1" x2="8" y2="1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          </button>
+          <button class="wc-btn wc-maximize" id="wc-maximize" title="Maximize">
+            <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 5.5L1 1.5C1 1.22 1.22 1 1.5 1L5.5 1M7 2.5L7 6.5C7 6.78 6.78 7 6.5 7L2.5 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" fill="none"/></svg>
+          </button>
+        </div>
+        <span class="titlebar-label">VPS Connector</span>
+      </div>
+      <div class="titlebar-right">
+        <span class="titlebar-version">v1.0.0</span>
+      </div>
+    </div>
+
+    <!-- Main content area -->
+    <div class="content">
+
+      <!-- Header -->
+      <header class="app-header">
+        <div class="app-icon">
+          <img src="../../assets/VPS Connector Logo V2.png" width="44" height="44" alt="VPS Connector">
+        </div>
+        <div class="app-header-text">
+          <h1>VPS Connector</h1>
+          <p class="subtitle">Mount your VPS as a local drive</p>
+        </div>
+      </header>
+
+      <!-- Screen 1: Setup (dependencies missing) -->
+      <div id="setup-screen" class="screen" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <h2>Required Dependencies</h2>
+            <p class="card-desc">Install these to mount remote filesystems:</p>
+          </div>
+          <div class="dep-item" id="dep-winfsp">
+            <span class="dep-status"></span>
+            <div class="dep-info">
+              <strong>WinFsp</strong>
+              <span class="dep-desc">Windows filesystem driver</span>
+            </div>
+            <div class="dep-actions">
+              <button class="btn-install" id="btn-install-winfsp">Install</button>
+            </div>
+          </div>
+          <div class="dep-item" id="dep-sshfs">
+            <span class="dep-status"></span>
+            <div class="dep-info">
+              <strong>SSHFS-Win</strong>
+              <span class="dep-desc">SSH filesystem for Windows</span>
+            </div>
+            <div class="dep-actions">
+              <button class="btn-install" id="btn-install-sshfs">Install</button>
+            </div>
+          </div>
+          <div class="install-log" id="install-log"></div>
+          <button id="btn-recheck" class="btn btn-secondary">Re-check Dependencies</button>
+        </div>
+      </div>
+
+      <!-- Screen 2: Connection Form -->
+      <div id="connect-screen" class="screen" style="display: none;">
+        <div class="card">
+          <div class="form-group">
+            <label for="host">Host / IP Address</label>
+            <input type="text" id="host" placeholder="e.g., 192.168.1.100 or myserver.com" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="username">Username</label>
+              <input type="text" id="username" placeholder="root">
+            </div>
+            <div class="form-group flex-1">
+              <label for="port">Port</label>
+              <input type="number" id="port" value="22" min="1" max="65535">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Authentication</label>
+            <div class="auth-toggle">
+              <button class="auth-btn active" data-auth="password">Password</button>
+              <button class="auth-btn" data-auth="key">SSH Key</button>
+            </div>
+          </div>
+          <div class="form-group" id="password-group">
+            <label for="password">Password</label>
+            <div class="input-with-icon">
+              <input type="password" id="password" placeholder="Enter password">
+            </div>
+          </div>
+          <div class="form-group" id="key-group" style="display: none;">
+            <label for="keyfile">Private Key File</label>
+            <div class="file-picker">
+              <input type="text" id="keyfile" placeholder="Select key file..." readonly>
+              <button id="btn-browse" class="btn btn-small">Browse</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="remote-path">Remote Path</label>
+              <input type="text" id="remote-path" value="/">
+            </div>
+            <div class="form-group flex-1">
+              <label for="drive-letter">Drive</label>
+              <select id="drive-letter">
+                <option value="V:">V:</option>
+              </select>
+            </div>
+          </div>
+          <button id="btn-connect" class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:2px">
+              <path d="M7 1v5M4.5 3.5L7 6l2.5-2.5M2 8.5C2 10.43 3.57 12 5.5 12h3c1.93 0 3.5-1.57 3.5-3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Connect
+          </button>
+        </div>
+      </div>
+
+      <!-- Screen 3: Connected -->
+      <div id="connected-screen" class="screen" style="display: none;">
+        <div class="card connected-card">
+          <div class="connected-status">
+            <div class="connected-status-dot-wrapper">
+              <div class="status-dot green"></div>
+              <div class="status-dot-ring"></div>
+            </div>
+            <span>Connected</span>
+          </div>
+          <div class="connected-info">
+            <div class="info-row">
+              <span class="info-label">Host</span>
+              <span class="info-value" id="connected-host"></span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Drive</span>
+              <span class="info-value" id="connected-drive"></span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Path</span>
+              <span class="info-value" id="connected-path"></span>
+            </div>
+          </div>
+          <div class="connected-actions">
+            <button id="btn-explorer" class="btn btn-secondary">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1.5h3.5L7 3H11.5V11.5H2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+              Explorer
+            </button>
+            <button id="btn-disconnect" class="btn btn-danger">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M4 6.5h5M6.5 1A5.5 5.5 0 1 0 12 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+              Disconnect
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Initializing...</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
