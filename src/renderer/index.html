@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self'; font-src 'self';">
   <title>VPS Connector</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -20,14 +20,13 @@
           <button class="wc-btn wc-minimize" id="wc-minimize" title="Minimize">
             <svg width="8" height="2" viewBox="0 0 8 2"><line x1="0" y1="1" x2="8" y2="1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
           </button>
-          <button class="wc-btn wc-maximize" id="wc-maximize" title="Maximize">
-            <svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 5.5L1 1.5C1 1.22 1.22 1 1.5 1L5.5 1M7 2.5L7 6.5C7 6.78 6.78 7 6.5 7L2.5 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" fill="none"/></svg>
-          </button>
         </div>
-        <span class="titlebar-label">VPS Connector</span>
+      </div>
+      <div class="titlebar-center">
+        <span class="titlebar-app-name">VPS Connector</span>
       </div>
       <div class="titlebar-right">
-        <span class="titlebar-version">v1.0.0</span>
+        <span class="titlebar-version">Version 1.0</span>
       </div>
     </div>
 
@@ -36,12 +35,9 @@
 
       <!-- Header -->
       <header class="app-header">
-        <div class="app-icon">
-          <img src="../../assets/VPS Connector Logo V2.png" width="44" height="44" alt="VPS Connector">
-        </div>
         <div class="app-header-text">
-          <h1>VPS Connector</h1>
-          <p class="subtitle">Mount your VPS as a local drive</p>
+          <h1 id="app-header-title">VPS Connector</h1>
+          <p class="subtitle" id="app-header-subtitle">Mount your VPS as a local drive</p>
         </div>
       </header>
 
@@ -53,82 +49,134 @@
             <p class="card-desc">Install these to mount remote filesystems:</p>
           </div>
           <div class="dep-item" id="dep-winfsp">
-            <span class="dep-status"></span>
             <div class="dep-info">
-              <strong>WinFsp</strong>
-              <span class="dep-desc">Windows filesystem driver</span>
-            </div>
-            <div class="dep-actions">
-              <button class="btn-install" id="btn-install-winfsp">Install</button>
+              <div class="dep-copy">
+                <div class="dep-title">
+                  <span class="dep-status"></span>
+                  <strong>WinFsp</strong>
+                  <span class="dep-desc">Windows filesystem driver</span>
+                </div>
+              </div>
+              <div class="dep-actions">
+                <a class="btn-install" id="link-install-winfsp" href="https://winfsp.dev/rel/">Download &amp; Install</a>
+                <button class="btn-install btn-install-secondary" id="cmd-install-winfsp" type="button">Install via PowerShell</button>
+              </div>
             </div>
           </div>
           <div class="dep-item" id="dep-sshfs">
-            <span class="dep-status"></span>
             <div class="dep-info">
-              <strong>SSHFS-Win</strong>
-              <span class="dep-desc">SSH filesystem for Windows</span>
-            </div>
-            <div class="dep-actions">
-              <button class="btn-install" id="btn-install-sshfs">Install</button>
+              <div class="dep-copy">
+                <div class="dep-title">
+                  <span class="dep-status"></span>
+                  <strong>SSHFS-Win</strong>
+                  <span class="dep-desc">SSH filesystem for Windows</span>
+                </div>
+              </div>
+              <div class="dep-actions">
+                <a class="btn-install" id="link-install-sshfs" href="https://github.com/winfsp/sshfs-win">Download &amp; Install</a>
+                <button class="btn-install btn-install-secondary" id="cmd-install-sshfs" type="button">Install via PowerShell</button>
+              </div>
             </div>
           </div>
-          <div class="install-log" id="install-log"></div>
-          <button id="btn-recheck" class="btn btn-secondary">Re-check Dependencies</button>
+          <div class="setup-footer">
+            <button id="btn-recheck" class="btn btn-secondary">Verify Installation</button>
+          </div>
         </div>
+        <div id="verify-msg" class="verify-msg verify-msg-footer" style="display: none;"></div>
       </div>
 
       <!-- Screen 2: Connection Form -->
       <div id="connect-screen" class="screen" style="display: none;">
         <div class="card">
+          <div class="card-header connect-card-header">
+            <h2>Set Up Your Connector</h2>
+            <p class="card-desc">Enter your server details to mount it locally.</p>
+          </div>
           <div class="form-group">
-            <label for="host">Host / IP Address</label>
-            <input type="text" id="host" placeholder="e.g., 192.168.1.100 or myserver.com" required>
+            <label for="host" class="label-with-info">
+              <span>Server IP or Hostname</span>
+              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">Use your VPS public IP address or hostname.</span></span>
+            </label>
+            <input type="text" id="host" placeholder="e.g., 203.0.113.24 or srv123.hostinger.com" required>
           </div>
           <div class="form-row">
             <div class="form-group flex-2">
-              <label for="username">Username</label>
+              <label for="username" class="label-with-info">
+                <span>SSH Username</span>
+                <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">This is your SSH login name. Many VPS servers use root.</span></span>
+              </label>
               <input type="text" id="username" placeholder="root">
             </div>
             <div class="form-group flex-1">
-              <label for="port">Port</label>
-              <input type="number" id="port" value="22" min="1" max="65535">
+              <label for="port" class="label-with-info">
+                <span>SSH Port</span>
+                <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">Usually 22. Only change this if your VPS uses a custom SSH port.</span></span>
+              </label>
+              <input type="text" id="port" value="22" inputmode="numeric" pattern="[0-9]*" maxlength="5" autocomplete="off" spellcheck="false">
             </div>
           </div>
           <div class="form-group">
-            <label>Authentication</label>
+            <label class="label-with-info">
+              <span>SSH Login Method</span>
+              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">Pick the same login method you use in SSH: password or private key.</span></span>
+            </label>
             <div class="auth-toggle">
               <button class="auth-btn active" data-auth="password">Password</button>
               <button class="auth-btn" data-auth="key">SSH Key</button>
             </div>
           </div>
           <div class="form-group" id="password-group">
-            <label for="password">Password</label>
+            <label for="password" class="label-with-info">
+              <span>SSH Password <span class="field-note">when using Password</span></span>
+              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">Enter the SSH password for this VPS account.</span></span>
+            </label>
             <div class="input-with-icon">
-              <input type="password" id="password" placeholder="Enter password">
+              <input type="password" id="password" placeholder="Enter your VPS root or SSH password">
             </div>
           </div>
           <div class="form-group" id="key-group" style="display: none;">
-            <label for="keyfile">Private Key File</label>
+            <label for="keyfile" class="label-with-info">
+              <span>SSH Private Key File <span class="field-note">when using SSH Key</span></span>
+              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">Select the private key file you use for SSH login.</span></span>
+            </label>
             <div class="file-picker">
-              <input type="text" id="keyfile" placeholder="Select key file..." readonly>
+              <input type="text" id="keyfile" placeholder="Select your private key file..." readonly>
               <button id="btn-browse" class="btn btn-small">Browse</button>
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group flex-2">
-              <label for="remote-path">Remote Path</label>
-              <input type="text" id="remote-path" value="/">
-            </div>
-            <div class="form-group flex-1">
-              <label for="drive-letter">Drive</label>
-              <select id="drive-letter">
+          <div class="form-group drive-letter-group">
+            <label for="drive-letter" class="label-with-info">
+              <span>Windows Drive Letter</span>
+              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">Pick the drive letter Windows should use in This PC. V: is the default.</span></span>
+            </label>
+            <div class="drive-letter-field">
+              <button
+                id="drive-letter-trigger"
+                class="drive-letter-trigger"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-controls="drive-letter-menu"
+              >
+                <span id="drive-letter-value">V:</span>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                  <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <div id="drive-letter-menu" class="drive-letter-menu">
+                <div id="drive-letter-options" class="drive-letter-options" role="listbox" aria-label="Windows Drive Letter"></div>
+                <div class="drive-letter-scrollbar" aria-hidden="true">
+                  <div id="drive-letter-scrollbar-thumb" class="drive-letter-scrollbar-thumb"></div>
+                </div>
+              </div>
+              <select id="drive-letter" class="drive-letter-select" tabindex="-1" aria-hidden="true">
                 <option value="V:">V:</option>
               </select>
             </div>
           </div>
           <button id="btn-connect" class="btn btn-primary">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:2px">
-              <path d="M7 1v5M4.5 3.5L7 6l2.5-2.5M2 8.5C2 10.43 3.57 12 5.5 12h3c1.93 0 3.5-1.57 3.5-3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M5.25 4.25H4A2.75 2.75 0 1 0 4 9.75H5.25M8.75 4.25H10A2.75 2.75 0 1 1 10 9.75H8.75M4.75 7H9.25" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             Connect
           </button>
@@ -155,7 +203,7 @@
               <span class="info-value" id="connected-drive"></span>
             </div>
             <div class="info-row">
-              <span class="info-label">Path</span>
+              <span class="info-label">Location</span>
               <span class="info-value" id="connected-path"></span>
             </div>
           </div>
@@ -173,10 +221,10 @@
       </div>
     </div>
 
-    <!-- Status Bar -->
-    <footer class="status-bar">
-      <span class="status-dot" id="status-dot"></span>
-      <span id="status-text">Initializing...</span>
+    <!-- Status Bar — hidden by default, shown on connect/connected screens -->
+    <footer class="status-bar" style="display: none;">
+      <span class="status-dot red" id="status-dot"></span>
+      <span id="status-text">Disconnected</span>
     </footer>
   </div>
 

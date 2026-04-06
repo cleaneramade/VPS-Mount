@@ -53,11 +53,9 @@ contextBridge.exposeInMainWorld('vpsConnector', {
   loadConfigLocal: () => loadConfigLocal(),
 
   // IPC for actions that need main process
-  checkDependencies: () => ipcRenderer.invoke('check-dependencies'),
   connect: (config) => ipcRenderer.invoke('connect', config),
   disconnect: () => ipcRenderer.invoke('disconnect'),
   installDependency: (which) => ipcRenderer.invoke('install-dependency', which),
-  openExternal: (url) => ipcRenderer.invoke('open-external', url),
   selectKeyFile: () => ipcRenderer.invoke('select-key-file'),
   openExplorer: (drive) => ipcRenderer.invoke('open-explorer', drive),
   onConnectionLost: (callback) => {

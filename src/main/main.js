@@ -14,9 +14,11 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
       mainWindow.focus();
+    } else {
+      createWindow();
     }
   });
 }
@@ -33,32 +35,39 @@ function createWindow() {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
     },
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-  // Close to tray instead of quitting
+  // Close to tray only when connected to a VPS, otherwise quit
   mainWindow.on('close', (event) => {
-    if (!isQuitting) {
+    if (!isQuitting && sshfsManager.isConnected()) {
       event.preventDefault();
       mainWindow.hide();
 
       if (!trayNotificationShown && Notification.isSupported()) {
         new Notification({
           title: 'VPS Connector',
-          body: 'App is still running in the system tray. Right-click the tray icon for options.',
+          body: 'VPS is still connected. App is running in the system tray.',
         }).show();
         trayNotificationShown = true;
       }
     }
   });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 function showWindow() {
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show();
     mainWindow.focus();
+  } else {
+    createWindow();
   }
 }
 
@@ -114,7 +123,9 @@ app.on('before-quit', () => {
 });
 
 app.on('window-all-closed', () => {
-  // Don't quit — tray keeps app alive
+  if (!sshfsManager.isConnected()) {
+    app.quit();
+  }
 });
 
 module.exports = { getMainWindow: () => mainWindow, setTrayConnected: (connected, host) => trayManager.setConnected(connected, host) };

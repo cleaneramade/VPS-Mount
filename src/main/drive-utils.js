@@ -1,23 +1,25 @@
-const { execSync } = require('child_process');
+const fs = require('fs');
 
 function getAvailableDriveLetters() {
   const used = new Set();
-  try {
-    const output = execSync('wmic logicaldisk get name', { encoding: 'utf8', shell: true });
-    output.split('\n').forEach(line => {
-      const match = line.trim().match(/^([A-Z]):$/);
-      if (match) used.add(match[1]);
-    });
-  } catch {
-    // Assume C is used at minimum
-    used.add('C');
+
+  // Fast check: just see which drive letters have a root directory
+  for (let code = 65; code <= 90; code++) { // A-Z
+    const letter = String.fromCharCode(code);
+    try {
+      if (fs.existsSync(letter + ':\\')) {
+        used.add(letter);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   // Skip A, B (floppy), C (system)
   const skip = new Set(['A', 'B', 'C']);
   const available = [];
 
-  // Go from Z downward so preferred letters (V, W, X, Y, Z) appear first
+  // Go from Z downward so preferred letters appear first
   for (let code = 90; code >= 68; code--) { // Z=90, D=68
     const letter = String.fromCharCode(code);
     if (!used.has(letter) && !skip.has(letter)) {
@@ -25,7 +27,7 @@ function getAvailableDriveLetters() {
     }
   }
 
-  // Put V: first if available, otherwise keep Z-D order
+  // Put V: first if available
   const vIndex = available.indexOf('V:');
   if (vIndex > 0) {
     available.splice(vIndex, 1);
