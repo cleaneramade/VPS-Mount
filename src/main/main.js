@@ -28,6 +28,8 @@ function createWindow() {
     width: 520,
     height: 660,
     resizable: false,
+    maximizable: false,
+    fullscreenable: false,
     frame: false,
     backgroundColor: '#070810',
     icon: path.join(__dirname, '../../assets/icon.ico'),
@@ -40,6 +42,19 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+
+  // This app uses a fixed-size custom window and should never maximize/fullscreen.
+  mainWindow.on('maximize', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.unmaximize();
+    }
+  });
+
+  mainWindow.on('enter-full-screen', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setFullScreen(false);
+    }
+  });
 
   // Close to tray only when connected to a VPS, otherwise quit
   mainWindow.on('close', (event) => {
@@ -93,10 +108,6 @@ app.whenReady().then(() => {
 
   // Window control IPC handlers
   ipcMain.on('window-minimize', () => mainWindow && mainWindow.minimize());
-  ipcMain.on('window-maximize', () => {
-    if (!mainWindow) return;
-    mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
-  });
   ipcMain.on('window-close', () => {
     if (mainWindow) mainWindow.close();
   });

@@ -181,41 +181,39 @@
             Connect
           </button>
         </div>
+        <div id="connect-error-msg" class="error-msg connect-error-footer" style="display: none;"></div>
       </div>
 
       <!-- Screen 3: Connected -->
       <div id="connected-screen" class="screen" style="display: none;">
-        <div class="card connected-card">
-          <div class="connected-status">
-            <div class="connected-status-dot-wrapper">
-              <div class="status-dot green"></div>
-              <div class="status-dot-ring"></div>
+        <div class="card connected-card is-unmounted" id="connected-device-card">
+          <div class="device-scene">
+            <div class="device-orb device-orb-1"></div>
+            <div class="device-orb device-orb-2"></div>
+            <div class="device-orb device-orb-3"></div>
+            <div class="device-shell">
+              <span class="device-status-label" id="device-status-label">Ready to Mount</span>
+              <button id="btn-power-toggle" class="device-power-btn" type="button" aria-label="Toggle VPS mount">
+                <span class="device-power-ring"></span>
+                <svg class="device-power-icon" width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">
+                  <path d="M17 5.5V16.5M9.5 9.5C6.3 11.9 4.25 15.72 4.25 20C4.25 27.04 9.96 32.75 17 32.75C24.04 32.75 29.75 27.04 29.75 20C29.75 15.72 27.7 11.9 24.5 9.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <button id="btn-power-action" class="btn btn-primary device-action-btn" type="button">Mount</button>
+              <p class="device-status-copy" id="device-status-copy">Your VPS device is ready. Click Mount to attach it as a Windows drive.</p>
+              <div class="device-meta">
+                <span id="connected-host"></span>
+                <span class="device-meta-dot"></span>
+                <span id="connected-drive"></span>
+              </div>
             </div>
-            <span>Connected</span>
           </div>
-          <div class="connected-info">
-            <div class="info-row">
-              <span class="info-label">Host</span>
-              <span class="info-value" id="connected-host"></span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Drive</span>
-              <span class="info-value" id="connected-drive"></span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Location</span>
-              <span class="info-value" id="connected-path"></span>
-            </div>
-          </div>
-          <div class="connected-actions">
-            <button id="btn-explorer" class="btn btn-secondary">
+          <div class="device-footer">
+            <button id="btn-explorer" class="btn btn-secondary" type="button">
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1.5h3.5L7 3H11.5V11.5H2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
-              Explorer
+              Open Drive
             </button>
-            <button id="btn-disconnect" class="btn btn-danger">
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M4 6.5h5M6.5 1A5.5 5.5 0 1 0 12 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-              Disconnect
-            </button>
+            <button id="btn-remove-device" class="btn btn-secondary" type="button">Remove Device</button>
           </div>
         </div>
       </div>

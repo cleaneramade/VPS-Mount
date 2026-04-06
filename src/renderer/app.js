@@ -15,9 +15,19 @@ const screens = {
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const appHeader = document.querySelector('.app-header');
+const appShell = document.querySelector('.app');
 const content = document.querySelector('.content');
 const headerTitle = document.getElementById('app-header-title');
 const headerSubtitle = document.getElementById('app-header-subtitle');
+const connectedDeviceCard = document.getElementById('connected-device-card');
+const connectedHost = document.getElementById('connected-host');
+const connectedDrive = document.getElementById('connected-drive');
+const deviceStatusLabel = document.getElementById('device-status-label');
+const deviceStatusCopy = document.getElementById('device-status-copy');
+const powerToggleButton = document.getElementById('btn-power-toggle');
+const powerActionButton = document.getElementById('btn-power-action');
+const explorerButton = document.getElementById('btn-explorer');
+const removeDeviceButton = document.getElementById('btn-remove-device');
 
 const headerContent = {
   setup: {
@@ -64,6 +74,8 @@ portInput.addEventListener('input', () => {
 
 const infoTips = Array.from(document.querySelectorAll('.info-tip'));
 let activeInfoTip = null;
+let deviceConfig = null;
+let deviceMounted = false;
 
 function positionInfoTip(tip) {
   const bubble = tip.querySelector('.info-bubble');
@@ -312,6 +324,7 @@ function initDriveLetterDropdown() {
 function showScreen(name) {
   Object.values(screens).forEach(s => s.style.display = 'none');
   if (screens[name]) screens[name].style.display = 'flex';
+  appShell.classList.toggle('is-connected-screen', name === 'connected');
   content.classList.toggle('is-connect-screen', name === 'connect');
   const footer = document.querySelector('.status-bar');
   if (footer) footer.style.display = name === 'connected' ? 'flex' : 'none';
@@ -326,6 +339,83 @@ function showScreen(name) {
 function setStatus(text, dotClass) {
   statusText.textContent = text;
   statusDot.className = 'status-dot' + (dotClass ? ' ' + dotClass : '');
+}
+
+function setDeviceButtonsDisabled(disabled) {
+  powerToggleButton.disabled = disabled;
+  powerActionButton.disabled = disabled;
+  removeDeviceButton.disabled = disabled;
+}
+
+function renderDeviceScreen(message) {
+  if (!deviceConfig) return;
+
+  connectedHost.textContent = `${deviceConfig.username}@${deviceConfig.host}`;
+  connectedDrive.textContent = deviceConfig.driveLetter;
+  connectedDeviceCard.classList.toggle('is-mounted', deviceMounted);
+  connectedDeviceCard.classList.toggle('is-unmounted', !deviceMounted);
+
+  if (deviceMounted) {
+    deviceStatusLabel.textContent = 'Mounted';
+    deviceStatusCopy.textContent = message || `${deviceConfig.host} is mounted as ${deviceConfig.driveLetter} in This PC. Click Dismount to safely disconnect it.`;
+    powerActionButton.textContent = 'Dismount';
+    explorerButton.disabled = false;
+  } else {
+    deviceStatusLabel.textContent = 'Ready to Mount';
+    deviceStatusCopy.textContent = message || `${deviceConfig.host} is ready to mount as ${deviceConfig.driveLetter}. Click Mount to reconnect it.`;
+    powerActionButton.textContent = 'Mount';
+    explorerButton.disabled = true;
+  }
+}
+
+async function connectDevice(config, options = {}) {
+  const { showFooterError = false, preserveDeviceScreen = false } = options;
+  clearError();
+
+  if (showFooterError) {
+    showScreen('connect');
+  }
+
+  state = 'connecting';
+  setStatus('Testing SSH connection...', 'yellow pulse');
+
+  if (showFooterError) {
+    setFormDisabled(true);
+    document.getElementById('btn-connect').innerHTML = '<div class="spinner"></div> Connecting...';
+  } else {
+    setDeviceButtonsDisabled(true);
+    powerActionButton.innerHTML = '<div class="spinner"></div> Connecting...';
+  }
+
+  try {
+    const result = await window.vpsConnector.connect(config);
+    deviceConfig = result.config || config;
+    deviceMounted = true;
+    state = 'connected';
+    renderDeviceScreen();
+    showScreen('connected');
+    setStatus(`Connected to ${deviceConfig.host}`, 'green');
+  } catch (err) {
+    deviceMounted = false;
+    const formatted = formatConnectError(err);
+    if (showFooterError) {
+      showError(formatted);
+    } else if (preserveDeviceScreen && deviceConfig) {
+      renderDeviceScreen(formatted);
+      showScreen('connected');
+    }
+    state = 'disconnected';
+    setStatus('Connection failed', 'red');
+    throw err;
+  } finally {
+    if (showFooterError) {
+      setFormDisabled(false);
+      document.getElementById('btn-connect').innerHTML = 'Connect';
+    } else {
+      setDeviceButtonsDisabled(false);
+      renderDeviceScreen(deviceStatusCopy.textContent);
+    }
+  }
 }
 
 // Initialize — all sync, no IPC
@@ -600,28 +690,61 @@ function getFormConfig() {
 }
 
 function validateForm(config) {
-  if (!config.host) return 'Host is required';
-  if (!config.username) return 'Username is required';
-  if (config.authMethod === 'password' && !config.password) return 'Password is required';
-  if (config.authMethod === 'key' && !config.keyFilePath) return 'Key file is required';
+  if (!config.host) return 'Enter your VPS host or IP address before connecting.';
+  if (!config.username) return 'Enter the SSH username for this VPS before connecting.';
+  if (config.authMethod === 'password' && !config.password) return 'Enter the SSH password for this VPS account before connecting.';
+  if (config.authMethod === 'key' && !config.keyFilePath) return 'Select the SSH private key file you want to use before connecting.';
   const port = parseInt(config.port);
-  if (isNaN(port) || port < 1 || port > 65535) return 'Port must be 1-65535';
+  if (isNaN(port) || port < 1 || port > 65535) return 'Enter a valid SSH port between 1 and 65535 before connecting.';
   return null;
 }
 
-function showError(msg) {
-  let el = document.querySelector('.error-msg');
-  if (!el) {
-    el = document.createElement('div');
-    el.className = 'error-msg';
-    document.querySelector('#connect-screen .card').appendChild(el);
+function formatConnectError(err) {
+  const rawMessage = ((err && err.message) ? err.message : 'Connection failed')
+    .replace(/^Error invoking remote method 'connect':\s*/i, '')
+    .replace(/^Error:\s*/i, '')
+    .trim();
+
+  if (/getaddrinfo\s+EAI_FAIL/i.test(rawMessage) || /hostname could not be resolved/i.test(rawMessage)) {
+    return 'Connection failed: the VPS hostname could not be resolved. Check the server address and remove any ssh:// prefix.';
   }
+
+  if (/getaddrinfo\s+EAI_AGAIN/i.test(rawMessage)) {
+    return 'Connection failed: DNS lookup for the VPS did not complete. Check the server address and try again.';
+  }
+
+  if (/authentication failed/i.test(rawMessage)) {
+    return 'Connection failed: SSH authentication was rejected. Check the username and password or key file.';
+  }
+
+  if (/connection timed out/i.test(rawMessage) || /timed out/i.test(rawMessage)) {
+    return 'Connection failed: the VPS did not respond in time. Check the host, port, firewall, and network access.';
+  }
+
+  if (/connection refused/i.test(rawMessage)) {
+    return 'Connection failed: the VPS refused the SSH connection. Check that SSH is running and the port is correct.';
+  }
+
+  if (/drive letter is already in use/i.test(rawMessage)) {
+    return 'Connection failed: the selected Windows drive letter is already in use. Choose a different one and try again.';
+  }
+
+  if (/ssh key file not found/i.test(rawMessage) || /cannot read key file/i.test(rawMessage)) {
+    return 'Connection failed: the selected SSH key file could not be read. Check the file path and try again.';
+  }
+
+  return rawMessage ? `Connection failed: ${rawMessage}` : 'Connection failed. Check your VPS details and try again.';
+}
+
+function showError(msg) {
+  const el = document.getElementById('connect-error-msg');
+  if (!el) return;
   el.textContent = msg;
   el.style.display = 'block';
 }
 
 function clearError() {
-  const el = document.querySelector('.error-msg');
+  const el = document.getElementById('connect-error-msg');
   if (el) el.style.display = 'none';
 }
 
@@ -637,7 +760,6 @@ function setFormDisabled(disabled) {
 
 // Connect
 document.getElementById('btn-connect').addEventListener('click', async () => {
-  clearError();
   const config = getFormConfig();
   const error = validateForm(config);
   if (error) {
@@ -645,52 +767,66 @@ document.getElementById('btn-connect').addEventListener('click', async () => {
     return;
   }
 
-  state = 'connecting';
-  setFormDisabled(true);
-  const connectBtn = document.getElementById('btn-connect');
-  connectBtn.innerHTML = '<div class="spinner"></div> Connecting...';
-  setStatus('Testing SSH connection...', 'yellow pulse');
-
   try {
-    await window.vpsConnector.connect(config);
-    state = 'connected';
-    document.getElementById('connected-host').textContent = `${config.username}@${config.host}`;
-    document.getElementById('connected-drive').textContent = config.driveLetter;
-    document.getElementById('connected-path').textContent = 'This PC';
-    showScreen('connected');
-    setStatus(`Connected to ${config.host}`, 'green');
+    await connectDevice(config, { showFooterError: true });
   } catch (err) {
-    state = 'disconnected';
-    showError(err.message || 'Connection failed');
-    setStatus('Connection failed', 'red');
-  } finally {
-    setFormDisabled(false);
-    connectBtn.innerHTML = 'Connect';
+    // Footer error is already shown in connectDevice.
   }
 });
 
-// Disconnect
-document.getElementById('btn-disconnect').addEventListener('click', async () => {
-  state = 'disconnecting';
-  document.getElementById('btn-disconnect').disabled = true;
-  setStatus('Disconnecting...', 'yellow pulse');
+async function toggleDeviceMount() {
+  if (!deviceConfig) return;
+
+  if (deviceMounted) {
+    state = 'disconnecting';
+    setDeviceButtonsDisabled(true);
+    powerActionButton.innerHTML = '<div class="spinner"></div> Dismounting...';
+    setStatus('Dismounting...', 'yellow pulse');
+
+    try {
+      await window.vpsConnector.disconnect();
+      deviceMounted = false;
+      renderDeviceScreen('Your VPS has been dismounted. Click Mount to reconnect it.');
+      setStatus('Disconnected', 'red');
+    } finally {
+      setDeviceButtonsDisabled(false);
+      renderDeviceScreen();
+      state = 'disconnected';
+    }
+
+    return;
+  }
 
   try {
-    await window.vpsConnector.disconnect();
-  } catch (err) {}
+    await connectDevice(deviceConfig, { preserveDeviceScreen: true });
+  } catch {
+    // Device screen already shows the error context.
+  }
+}
 
-  state = 'disconnected';
-  showScreen('connect');
-  setStatus('Disconnected', 'red');
-  document.getElementById('btn-disconnect').disabled = false;
-});
+powerToggleButton.addEventListener('click', toggleDeviceMount);
+powerActionButton.addEventListener('click', toggleDeviceMount);
 
 // Open in Explorer
-document.getElementById('btn-explorer').addEventListener('click', () => {
-  const drive = document.getElementById('connected-drive').textContent;
+explorerButton.addEventListener('click', () => {
+  const drive = connectedDrive.textContent;
   if (window.vpsConnector.openExplorer) {
     window.vpsConnector.openExplorer(drive);
   }
+});
+
+removeDeviceButton.addEventListener('click', async () => {
+  if (deviceMounted) {
+    try {
+      await window.vpsConnector.disconnect();
+    } catch {}
+  }
+
+  deviceMounted = false;
+  deviceConfig = null;
+  clearError();
+  showScreen('connect');
+  setStatus('Disconnected', 'red');
 });
 
 // Browse for key file
@@ -706,7 +842,13 @@ document.getElementById('btn-browse').addEventListener('click', async () => {
 if (window.vpsConnector.onConnectionLost) {
   window.vpsConnector.onConnectionLost((reason) => {
     state = 'disconnected';
-    showScreen('connect');
+    deviceMounted = false;
+    if (deviceConfig) {
+      renderDeviceScreen(`Connection lost: ${reason}. Click Mount to reconnect it.`);
+      showScreen('connected');
+    } else {
+      showScreen('connect');
+    }
     setStatus('Connection lost: ' + reason, 'red');
   });
 }

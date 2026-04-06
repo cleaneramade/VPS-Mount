@@ -53,6 +53,51 @@ function getConfigPath() {
   return path.join(appData, 'vps-connector', 'config.json');
 }
 
+function normalizeConnectionConfig(config) {
+  const normalized = {
+    ...config,
+    host: (config.host || '').trim(),
+    username: (config.username || '').trim(),
+    port: String(config.port || '22').trim(),
+    remotePath: config.remotePath || '/',
+  };
+
+  let rawHost = normalized.host
+    .replace(/^ssh\s+/i, '')
+    .replace(/^sftp:\/\//i, 'ssh://')
+    .trim();
+
+  let parsedUsername = '';
+  let parsedPort = '';
+  let parsedHost = rawHost;
+
+  try {
+    const candidate = rawHost.includes('://') ? rawHost : `ssh://${rawHost}`;
+    const parsedUrl = new URL(candidate);
+    if (parsedUrl.hostname) parsedHost = parsedUrl.hostname;
+    if (parsedUrl.username) parsedUsername = decodeURIComponent(parsedUrl.username);
+    if (parsedUrl.port) parsedPort = parsedUrl.port;
+  } catch {
+    // Fall back to light string cleanup below.
+  }
+
+  if (parsedHost.includes('/')) {
+    parsedHost = parsedHost.split('/')[0];
+  }
+
+  if (parsedHost.includes('@')) {
+    parsedHost = parsedHost.split('@').pop();
+  }
+
+  parsedHost = parsedHost.replace(/^\[|\]$/g, '').trim();
+
+  normalized.host = parsedHost;
+  if (!normalized.username && parsedUsername) normalized.username = parsedUsername;
+  if ((normalized.port === '22' || !normalized.port) && parsedPort) normalized.port = parsedPort;
+
+  return normalized;
+}
+
 function buildInstallSteps(which, deps) {
   if (which === 'sshfs' && !deps.winfspInstalled) {
     return [INSTALLERS.winfsp, INSTALLERS.sshfs];
@@ -178,25 +223,26 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('test-connection', async (_event, config) => {
-    return testConnection(config);
+    return testConnection(normalizeConnectionConfig(config));
   });
 
   ipcMain.handle('connect', async (_event, config) => {
-    await testConnection(config);
+    const normalizedConfig = normalizeConnectionConfig(config);
+    await testConnection(normalizedConfig);
 
     const deps = cachedDeps || refreshDependencyCache();
     if (!deps.sshfsBinaryPath) {
       throw new Error('SSHFS-Win not found. Please install it first.');
     }
 
-    await sshfsManager.mount(config, deps.sshfsBinaryPath);
+    await sshfsManager.mount(normalizedConfig, deps.sshfsBinaryPath);
 
     const { setTrayConnected } = require('./main');
-    setTrayConnected(true, config.host);
+    setTrayConnected(true, normalizedConfig.host);
 
-    saveConfig(config);
+    saveConfig(normalizedConfig);
 
-    return { success: true };
+    return { success: true, config: normalizedConfig };
   });
 
   ipcMain.handle('disconnect', async () => {

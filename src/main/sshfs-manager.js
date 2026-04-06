@@ -1,4 +1,5 @@
 const { spawn, exec } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
 let sshfsProcess = null;
@@ -33,7 +34,7 @@ function buildArgs({ username, host, remotePath, driveLetter, port, authMethod, 
     args.push('-opassword_stdin');
   } else {
     args.push('-oPreferredAuthentications=publickey');
-    args.push(`-oIdentityFile="${keyFilePath.replace(/\\/g, '/')}"`);
+    args.push(`-oIdentityFile=${keyFilePath.replace(/\\/g, '/')}`);
   }
 
   return args;
@@ -57,6 +58,20 @@ function mount(config, sshfsBinaryPath) {
 
     let debugOutput = '';
     let resolved = false;
+    let mountCheckInterval = null;
+
+    function finishMounted() {
+      if (resolved) return;
+      resolved = true;
+      if (mountCheckInterval) {
+        clearInterval(mountCheckInterval);
+        mountCheckInterval = null;
+      }
+      sshfsProcess = proc;
+      sshfsPid = proc.pid;
+      startHealthMonitor();
+      resolve({ pid: proc.pid });
+    }
 
     // For password auth, pipe password to stdin
     if (config.authMethod === 'password') {
@@ -69,11 +84,7 @@ function mount(config, sshfsBinaryPath) {
       debugOutput = debugOutput.slice(-2048);
 
       if (!resolved && msg.includes('has been started')) {
-        resolved = true;
-        sshfsProcess = proc;
-        sshfsPid = proc.pid;
-        startHealthMonitor();
-        resolve({ pid: proc.pid });
+        finishMounted();
       }
     });
 
@@ -83,14 +94,30 @@ function mount(config, sshfsBinaryPath) {
       debugOutput = debugOutput.slice(-2048);
     });
 
+    mountCheckInterval = setInterval(() => {
+      try {
+        if (!resolved && fs.existsSync(config.driveLetter + '\\')) {
+          finishMounted();
+        }
+      } catch {}
+    }, 500);
+
     proc.on('error', (err) => {
       if (!resolved) {
         resolved = true;
+        if (mountCheckInterval) {
+          clearInterval(mountCheckInterval);
+          mountCheckInterval = null;
+        }
         reject(new Error(`Failed to start SSHFS: ${err.message}`));
       }
     });
 
     proc.on('close', (code) => {
+      if (mountCheckInterval) {
+        clearInterval(mountCheckInterval);
+        mountCheckInterval = null;
+      }
       if (!resolved) {
         resolved = true;
         if (debugOutput.includes('mount point in use') || debugOutput.includes('already in use')) {
@@ -115,6 +142,10 @@ function mount(config, sshfsBinaryPath) {
     setTimeout(() => {
       if (!resolved) {
         resolved = true;
+        if (mountCheckInterval) {
+          clearInterval(mountCheckInterval);
+          mountCheckInterval = null;
+        }
         proc.kill();
         reject(new Error('Mount timed out after 30 seconds. Check your connection details.'));
       }

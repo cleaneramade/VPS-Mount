@@ -61,6 +61,26 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.app.is-connected-screen {
+  background: linear-gradient(180deg, #0a0b14 0%, #090b13 100%);
+}
+
+.app.is-connected-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 14% 24%, rgba(120, 91, 255, 0.16) 0%, rgba(120, 91, 255, 0.08) 10%, rgba(120, 91, 255, 0) 28%),
+    radial-gradient(circle at 78% 30%, rgba(64, 116, 255, 0.12) 0%, rgba(64, 116, 255, 0.05) 8%, rgba(64, 116, 255, 0) 22%),
+    radial-gradient(circle at 50% 66%, rgba(153, 109, 255, 0.12) 0%, rgba(153, 109, 255, 0.04) 12%, rgba(153, 109, 255, 0) 30%);
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(4px);
 }
 
 /* ──── Custom Titlebar ──── */
@@ -74,6 +94,12 @@ body {
   -webkit-app-region: drag;
   flex-shrink: 0;
   background: var(--bg);
+  position: relative;
+  z-index: 1;
+}
+
+.app.is-connected-screen .titlebar {
+  background: transparent;
 }
 
 .titlebar-left {
@@ -224,8 +250,14 @@ body {
   padding: 20px 24px 20px;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  position: relative;
+  z-index: 1;
 }
 .content::-webkit-scrollbar { display: none; }
+
+.app.is-connected-screen .content {
+  background: transparent;
+}
 
 .content.is-connect-screen {
   overflow: hidden;
@@ -299,8 +331,10 @@ body {
 }
 
 #connect-screen {
+  flex-direction: column;
   padding-bottom: 0;
   align-items: flex-start;
+  gap: 12px;
 }
 
 #connect-screen .card,
@@ -986,89 +1020,211 @@ body {
 /* ──── Connected Screen ──── */
 .connected-card {
   text-align: center;
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
-.connected-status {
+.device-scene {
+  position: relative;
+  overflow: visible;
+  border-radius: 0;
+  padding: 28px 20px 24px;
+  background: transparent;
+  border: none;
+}
+
+.device-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.device-orb {
+  display: none;
+}
+
+.device-orb-1 {
+  width: 120px;
+  height: 120px;
+  top: -34px;
+  left: -12px;
+  color: rgba(124, 95, 255, 0.26);
+  box-shadow: 0 0 90px rgba(124, 95, 255, 0.4);
+}
+
+.device-orb-2 {
+  width: 92px;
+  height: 92px;
+  right: -10px;
+  top: 42px;
+  color: rgba(56, 115, 255, 0.16);
+  box-shadow: 0 0 70px rgba(56, 115, 255, 0.28);
+  animation-delay: -2.5s;
+}
+
+.device-orb-3 {
+  width: 72px;
+  height: 72px;
+  left: 22%;
+  bottom: 8px;
+  color: rgba(214, 111, 255, 0.14);
+  box-shadow: 0 0 60px rgba(214, 111, 255, 0.22);
+  animation-delay: -4.5s;
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-10px) scale(1.05); }
+}
+
+.device-status-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(106, 77, 255, 0.12);
+  border: 1px solid rgba(106, 77, 255, 0.2);
+  color: var(--brand-300);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.device-power-btn {
+  position: relative;
+  width: 142px;
+  height: 142px;
+  margin: 24px 0 16px;
+  border: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(133, 108, 255, 0.36) 0%, rgba(71, 49, 170, 0.18) 48%, rgba(16, 18, 30, 0.96) 76%),
+    linear-gradient(180deg, #1a1632 0%, #0c0f1a 100%);
+  color: #f8f8ff;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 24px;
-  color: var(--success);
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(122, 91, 255, 0.22),
+    0 20px 36px rgba(4, 6, 16, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.connected-status-dot-wrapper {
-  position: relative;
-  width: 14px;
-  height: 14px;
+.device-power-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(122, 91, 255, 0.28),
+    0 24px 42px rgba(4, 6, 16, 0.58),
+    0 0 28px rgba(108, 78, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.connected-status-dot-wrapper .status-dot {
-  width: 14px;
-  height: 14px;
+.device-power-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.device-power-ring {
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(174, 154, 255, 0.22);
+  opacity: 0.9;
+}
+
+.device-power-icon {
   position: relative;
   z-index: 1;
 }
 
-.status-dot-ring {
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(166, 227, 161, 0.3);
-  animation: ring-pulse 2s ease-in-out infinite;
+.connected-card.is-mounted .device-power-btn {
+  box-shadow:
+    0 0 0 1px rgba(122, 91, 255, 0.28),
+    0 24px 42px rgba(4, 6, 16, 0.58),
+    0 0 40px rgba(108, 78, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-@keyframes ring-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.15); opacity: 0.2; }
+.connected-card.is-mounted .device-power-ring {
+  animation: devicePulse 2.6s ease-in-out infinite;
 }
 
-.connected-info {
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 18px;
-  text-align: left;
+@keyframes devicePulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.08); opacity: 0.35; }
 }
 
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 7px 0;
+.device-action-btn {
+  width: 180px;
+  margin-top: 0;
 }
 
-.info-row + .info-row {
-  border-top: 1px solid var(--input-border);
-}
-
-.info-label {
+.device-status-copy {
+  max-width: 360px;
+  margin: 16px auto 0;
   color: var(--text-secondary);
   font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  line-height: 1.45;
 }
 
-.info-value {
-  font-size: 14px;
-  font-weight: 500;
+.device-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.device-meta #connected-host,
+.device-meta #connected-drive {
   font-family: var(--font-mono);
   color: var(--brand-300);
 }
 
-.connected-actions {
-  display: flex;
-  gap: 10px;
+.device-meta-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.24);
 }
 
-.connected-actions .btn {
+.device-footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.device-footer .btn {
   flex: 1;
+}
+
+.connected-card.is-unmounted .device-status-label {
+  background: rgba(122, 127, 150, 0.12);
+  border-color: rgba(122, 127, 150, 0.18);
+  color: var(--text-secondary);
+}
+
+.connected-card.is-unmounted .device-power-btn {
+  background:
+    radial-gradient(circle at 50% 32%, rgba(122, 127, 150, 0.18) 0%, rgba(35, 38, 52, 0.2) 48%, rgba(16, 18, 30, 0.96) 76%),
+    linear-gradient(180deg, #161827 0%, #0c0f1a 100%);
+  color: #cbd1e7;
+  box-shadow:
+    0 0 0 1px rgba(122, 127, 150, 0.16),
+    0 20px 36px rgba(4, 6, 16, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* ──── Status Bar ──── */
@@ -1081,6 +1237,12 @@ body {
   color: var(--text-dim);
   background: var(--bg);
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.app.is-connected-screen .status-bar {
+  background: transparent;
 }
 
 /* ──── Spinner ──── */
@@ -1118,6 +1280,17 @@ body {
   background: rgba(243, 139, 168, 0.06);
   border: 1px solid rgba(243, 139, 168, 0.2);
   border-radius: var(--radius);
+  text-align: center;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.connect-error-footer {
+  width: 100%;
+  max-width: 560px;
+  margin: 12px auto 10px;
+  flex-shrink: 0;
 }
 
 /* ──── Setup screen ──── */
