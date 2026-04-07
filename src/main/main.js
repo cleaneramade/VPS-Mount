@@ -64,7 +64,7 @@ function createWindow() {
 
       if (!trayNotificationShown && Notification.isSupported()) {
         new Notification({
-          title: 'VPS Connector',
+          title: 'VPS Mount',
           body: 'VPS is still connected. App is running in the system tray.',
         }).show();
         trayNotificationShown = true;

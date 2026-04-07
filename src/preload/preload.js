@@ -40,7 +40,7 @@ function getAvailableDrivesLocal() {
 function loadConfigLocal() {
   try {
     const appData = process.env.APPDATA || path.join(require('os').homedir(), 'AppData', 'Roaming');
-    const configPath = path.join(appData, 'vps-connector', 'config.json');
+    const configPath = path.join(appData, 'vps-mount', 'config.json');
     if (fs.existsSync(configPath)) return JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } catch {}
   return null;
@@ -49,7 +49,7 @@ function loadConfigLocal() {
 function clearConfigLocal() {
   try {
     const appData = process.env.APPDATA || path.join(require('os').homedir(), 'AppData', 'Roaming');
-    const configPath = path.join(appData, 'vps-connector', 'config.json');
+    const configPath = path.join(appData, 'vps-mount', 'config.json');
     if (fs.existsSync(configPath)) {
       fs.unlinkSync(configPath);
     }

@@ -1,10 +1,10 @@
-// Converts Icon.png into icon.png (512px) and icon.ico (multi-size)
+// Converts assets/VPS Mount.png into icon.png (512px) and icon.ico (multi-size)
 const { app, nativeImage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
 const ASSETS = path.join(__dirname, '..', 'assets');
-const LOGO_PATH = path.join(ASSETS, 'VPS Connector Logo V2.png');
+const LOGO_PATH = path.join(ASSETS, 'VPS Mount.png');
 
 app.disableHardwareAcceleration();
 

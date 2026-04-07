@@ -15,7 +15,7 @@ function getTrayIcon() {
 function createTray() {
   const icon = getTrayIcon();
   tray = new Tray(icon);
-  tray.setToolTip('VPS Connector - Disconnected');
+  tray.setToolTip('VPS Mount - Disconnected');
   updateContextMenu();
 
   tray.on('double-click', () => {
@@ -54,7 +54,7 @@ function updateContextMenu() {
 function setConnected(connected, host) {
   isConnected = connected;
   if (tray) {
-    tray.setToolTip(connected ? `VPS Connector - Connected to ${host}` : 'VPS Connector - Disconnected');
+    tray.setToolTip(connected ? `VPS Mount - Connected to ${host}` : 'VPS Mount - Disconnected');
     updateContextMenu();
   }
 }

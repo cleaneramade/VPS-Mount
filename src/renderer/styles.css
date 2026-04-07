@@ -1025,15 +1025,23 @@ body {
   background: transparent;
   border: none;
   box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 620px;
 }
 
 .device-scene {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: visible;
   border-radius: 0;
-  padding: 12px 20px 24px;
+  padding: 8px 20px 0;
   background: transparent;
   border: none;
+  flex: 1;
+  min-height: 0;
 }
 
 .device-shell {
@@ -1042,28 +1050,45 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 100%;
+  height: 100%;
+}
+
+.device-center-stack {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 28px 0 0;
 }
 
 .device-heading {
-  max-width: 400px;
-  margin-top: -18px;
-  margin-bottom: 30px;
+  max-width: 520px;
+  margin-top: -48px;
+  margin-bottom: 18px;
   text-align: center;
 }
 
-.device-heading-title {
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.4px;
+.connected-card .device-heading-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.8px;
   color: #fff;
+  margin: 0;
 }
 
-.device-heading-subtitle {
-  margin-top: 6px;
+.connected-card .device-heading-subtitle {
+  margin-top: 8px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.4;
+  margin-bottom: 0;
 }
 
 .device-orb {
@@ -1108,15 +1133,16 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  padding: 0 12px;
-  margin-bottom: 22px;
+  min-height: 32px;
+  padding: 1.5px 13.6px 0.5px 18.4px;
   border-radius: 999px;
   background: rgba(106, 77, 255, 0.12);
   border: 1px solid rgba(106, 77, 255, 0.2);
   color: var(--brand-300);
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
+  text-align: center;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -1141,6 +1167,18 @@ body {
     0 20px 36px rgba(4, 6, 16, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  overflow: hidden;
+}
+
+.device-power-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(156, 132, 255, 0.12) 0%, rgba(122, 92, 236, 0.06) 42%, rgba(122, 92, 236, 0) 74%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .device-power-btn:hover:not(:disabled) {
@@ -1171,11 +1209,21 @@ body {
 }
 
 .connected-card.is-mounted .device-power-btn {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(142, 116, 248, 0.24) 0%, rgba(108, 82, 224, 0.18) 34%, rgba(68, 48, 164, 0.12) 58%, rgba(32, 24, 74, 0.12) 80%, rgba(21, 18, 44, 0.14) 100%),
+    radial-gradient(circle at 50% 50%, rgba(92, 68, 216, 0.085) 0%, rgba(92, 68, 216, 0.03) 40%, rgba(92, 68, 216, 0) 70%),
+    linear-gradient(180deg, #271f50 0%, #1d173b 44%, #15132a 100%);
   box-shadow:
     0 0 0 1px rgba(122, 91, 255, 0.28),
     0 24px 42px rgba(4, 6, 16, 0.58),
     0 0 40px rgba(108, 78, 255, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.connected-card.is-mounted .device-power-btn::before {
+  animation: deviceFillPulse 2.6s ease-in-out infinite;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(156, 132, 255, 0.14) 0%, rgba(122, 92, 236, 0.08) 44%, rgba(122, 92, 236, 0) 74%);
 }
 
 .connected-card.is-mounted .device-power-ring {
@@ -1187,14 +1235,19 @@ body {
   50% { transform: scale(1.08); opacity: 0.35; }
 }
 
+@keyframes deviceFillPulse {
+  0%, 100% { opacity: 0.22; }
+  50% { opacity: 0.42; }
+}
+
 .device-action-btn {
   width: 180px;
-  margin-top: 38px;
+  margin-top: 0;
 }
 
 .device-status-copy {
   max-width: 360px;
-  margin: 16px auto 0;
+  margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.45;
@@ -1203,7 +1256,7 @@ body {
 .device-footer {
   display: flex;
   gap: 10px;
-  margin-top: 18px;
+  padding: 0 20px 24px;
 }
 
 .device-footer .btn {

@@ -50,7 +50,7 @@ function refreshDependencyCache() {
 
 function getConfigPath() {
   const appData = process.env.APPDATA || path.join(require('os').homedir(), 'AppData', 'Roaming');
-  return path.join(appData, 'vps-connector', 'config.json');
+  return path.join(appData, 'vps-mount', 'config.json');
 }
 
 function normalizeConnectionConfig(config) {
@@ -113,7 +113,7 @@ function createInstallerScripts(which, steps) {
   const timestamp = Date.now();
   const installScript = path.join(os.tmpdir(), `vps-install-${which}-${timestamp}.ps1`);
   const wrapperScript = path.join(os.tmpdir(), `vps-wrapper-${which}-${timestamp}.ps1`);
-  const downloadDir = path.join(os.tmpdir(), 'vps-connector-installers');
+  const downloadDir = path.join(os.tmpdir(), 'vps-mount-installers');
   const logPath = DEBUG_LOG.replace(/\\/g, '\\\\');
   const psPath = POWERSHELL_EXE.replace(/\\/g, '\\\\');
 
@@ -313,7 +313,7 @@ function registerIpcHandlers() {
 
       setTimeout(() => {
         try {
-          debugLog('Relaunching VPS Connector from main process after install success');
+          debugLog('Relaunching VPS Mount from main process after install success');
           app.relaunch();
           app.exit(0);
         } catch (err) {
@@ -324,8 +324,8 @@ function registerIpcHandlers() {
       return {
         success: true,
         output: steps.length > 1
-          ? 'Installation completed. WinFsp and SSHFS-Win were installed. VPS Connector is restarting.'
-          : `Installation completed. ${INSTALLERS[which].name} was installed. VPS Connector is restarting.`,
+          ? 'Installation completed. WinFsp and SSHFS-Win were installed. VPS Mount is restarting.'
+          : `Installation completed. ${INSTALLERS[which].name} was installed. VPS Mount is restarting.`,
       };
     } catch (err) {
       debugLog(`Installer flow failed for ${which}: ${err && err.message ? err.message : err}`);

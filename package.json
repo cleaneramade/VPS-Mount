@@ -1,9 +1,10 @@
 {
-  "name": "vps-connector",
+  "name": "vps-mount",
   "version": "1.0.0",
   "description": "Mount VPS filesystem as a Windows drive letter via SSHFS",
   "main": "src/main/main.js",
   "scripts": {
+    "build:icon": "electron scripts/convert-logo.js",
     "start": "electron .",
     "dev": "electron . --dev",
     "build": "electron-builder --win"
@@ -16,8 +17,8 @@
     "electron-builder": "^25.0.0"
   },
   "build": {
-    "appId": "com.vpsconnector.app",
-    "productName": "VPS Connector",
+    "appId": "com.vpsmount.app",
+    "productName": "VPS Mount",
     "directories": {
       "output": "dist"
     },
@@ -25,12 +26,6 @@
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
           "arch": [
             "x64"
           ]
@@ -43,7 +38,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "VPS Connector"
+      "shortcutName": "VPS Mount"
     },
     "files": [
       "src/**/*",
