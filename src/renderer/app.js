@@ -881,9 +881,13 @@ removeDeviceButton.addEventListener('click', async () => {
   clearError();
   try {
     const deps = await getDependencyState();
-    showSetupScreen(deps);
+    if (deps.winfspInstalled && deps.sshfsInstalled) {
+      openConnectScreen();
+    } else {
+      showSetupScreen(deps);
+    }
   } catch {
-    showSetupScreen({ winfspInstalled: false, sshfsInstalled: false });
+    openConnectScreen();
   }
   setStatus('Disconnected', 'red');
 });
