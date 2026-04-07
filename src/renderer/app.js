@@ -20,8 +20,8 @@ const content = document.querySelector('.content');
 const headerTitle = document.getElementById('app-header-title');
 const headerSubtitle = document.getElementById('app-header-subtitle');
 const connectedDeviceCard = document.getElementById('connected-device-card');
-const connectedHost = document.getElementById('connected-host');
-const connectedDrive = document.getElementById('connected-drive');
+const deviceHeadingTitle = document.getElementById('device-heading-title');
+const deviceHeadingSubtitle = document.getElementById('device-heading-subtitle');
 const deviceStatusLabel = document.getElementById('device-status-label');
 const deviceStatusCopy = document.getElementById('device-status-copy');
 const powerToggleButton = document.getElementById('btn-power-toggle');
@@ -48,6 +48,11 @@ const headerContent = {
 const authButtons = document.querySelectorAll('.auth-btn');
 const passwordGroup = document.getElementById('password-group');
 const keyGroup = document.getElementById('key-group');
+const authMethodInfo = document.getElementById('auth-method-info');
+const passwordFieldNote = document.getElementById('password-field-note');
+const keyFieldNote = document.getElementById('key-field-note');
+const passwordInfoBubble = document.getElementById('password-info-bubble');
+const keyInfoBubble = document.getElementById('key-info-bubble');
 const portInput = document.getElementById('port');
 const driveLetterSelect = document.getElementById('drive-letter');
 const driveLetterField = document.querySelector('.drive-letter-field');
@@ -58,15 +63,37 @@ const driveLetterOptions = document.getElementById('drive-letter-options');
 const driveLetterScrollbar = document.querySelector('.drive-letter-scrollbar');
 const driveLetterScrollbarThumb = document.getElementById('drive-letter-scrollbar-thumb');
 
+function updateAuthUI(method) {
+  authButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.auth === method);
+  });
+
+  passwordGroup.style.display = method === 'password' ? 'block' : 'none';
+  keyGroup.style.display = method === 'key' ? 'block' : 'none';
+
+  if (method === 'key') {
+    authMethodInfo.textContent = 'Use your private key file on this tab.';
+    passwordFieldNote.textContent = 'when using Password';
+    keyFieldNote.textContent = 'when using SSH Key';
+    passwordInfoBubble.textContent = 'Enter the SSH password for this VPS account. This field is only used on the Password tab.';
+    keyInfoBubble.textContent = 'Select the private key file you use for SSH login. Passwords are not used on the SSH Key tab.';
+    return;
+  }
+
+  authMethodInfo.textContent = 'Use your SSH account password on this tab.';
+  passwordFieldNote.textContent = 'when using Password';
+  keyFieldNote.textContent = 'when using SSH Key';
+  passwordInfoBubble.textContent = 'Enter the SSH password for this VPS account. SSH key files are only used on the SSH Key tab.';
+  keyInfoBubble.textContent = 'Select the private key file you use for SSH login. This is only required on the SSH Key tab.';
+}
+
 authButtons.forEach(btn => {
   btn.addEventListener('click', () => {
-    authButtons.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const method = btn.dataset.auth;
-    passwordGroup.style.display = method === 'password' ? 'block' : 'none';
-    keyGroup.style.display = method === 'key' ? 'block' : 'none';
+    updateAuthUI(btn.dataset.auth);
   });
 });
+
+updateAuthUI('password');
 
 portInput.addEventListener('input', () => {
   portInput.value = portInput.value.replace(/\D/g, '').slice(0, 5);
@@ -327,12 +354,12 @@ function showScreen(name) {
   appShell.classList.toggle('is-connected-screen', name === 'connected');
   content.classList.toggle('is-connect-screen', name === 'connect');
   const footer = document.querySelector('.status-bar');
-  if (footer) footer.style.display = name === 'connected' ? 'flex' : 'none';
+  if (footer) footer.style.display = 'none';
   const header = headerContent[name];
   if (header) {
     headerTitle.textContent = header.title;
     headerSubtitle.textContent = header.subtitle;
-    appHeader.style.display = header.title || header.subtitle ? 'flex' : 'none';
+    appHeader.style.display = name === 'connected' ? 'none' : (header.title || header.subtitle ? 'flex' : 'none');
   }
 }
 
@@ -350,19 +377,21 @@ function setDeviceButtonsDisabled(disabled) {
 function renderDeviceScreen(message) {
   if (!deviceConfig) return;
 
-  connectedHost.textContent = `${deviceConfig.username}@${deviceConfig.host}`;
-  connectedDrive.textContent = deviceConfig.driveLetter;
   connectedDeviceCard.classList.toggle('is-mounted', deviceMounted);
   connectedDeviceCard.classList.toggle('is-unmounted', !deviceMounted);
 
   if (deviceMounted) {
+    deviceHeadingTitle.textContent = 'Connector Ready';
+    deviceHeadingSubtitle.textContent = 'Your VPS is mounted and ready to browse';
     deviceStatusLabel.textContent = 'Mounted';
-    deviceStatusCopy.textContent = message || `${deviceConfig.host} is mounted as ${deviceConfig.driveLetter} in This PC. Click Dismount to safely disconnect it.`;
+    deviceStatusCopy.textContent = message || 'Click Dismount to safely unmount it.';
     powerActionButton.textContent = 'Dismount';
     explorerButton.disabled = false;
   } else {
+    deviceHeadingTitle.textContent = 'Ready to Reconnect';
+    deviceHeadingSubtitle.textContent = 'Your VPS is disconnected but ready to mount again';
     deviceStatusLabel.textContent = 'Ready to Mount';
-    deviceStatusCopy.textContent = message || `${deviceConfig.host} is ready to mount as ${deviceConfig.driveLetter}. Click Mount to reconnect it.`;
+    deviceStatusCopy.textContent = message || 'Click Mount to reconnect it.';
     powerActionButton.textContent = 'Mount';
     explorerButton.disabled = true;
   }
@@ -451,6 +480,7 @@ function openConnectScreen() {
   setStatus('Disconnected', 'red');
   state = 'disconnected';
   populateDriveLetters();
+  resetConnectForm();
   loadSavedConfig();
 }
 
@@ -562,14 +592,30 @@ function loadSavedConfig() {
       setDriveLetterValue(config.driveLetter);
     }
     if (config.authMethod === 'key') {
-      authButtons.forEach(b => {
-        b.classList.toggle('active', b.dataset.auth === 'key');
-      });
-      passwordGroup.style.display = 'none';
-      keyGroup.style.display = 'block';
+      updateAuthUI('key');
       if (config.keyFilePath) document.getElementById('keyfile').value = config.keyFilePath;
+    } else {
+      updateAuthUI('password');
     }
   } catch {}
+}
+
+function resetConnectForm() {
+  document.getElementById('host').value = '';
+  document.getElementById('username').value = '';
+  document.getElementById('port').value = '22';
+  document.getElementById('password').value = '';
+  document.getElementById('keyfile').value = '';
+  updateAuthUI('password');
+
+  const defaultDrive = Array.from(driveLetterSelect.options).some(opt => opt.value === 'V:')
+    ? 'V:'
+    : driveLetterSelect.options[0]?.value;
+  if (defaultDrive) {
+    setDriveLetterValue(defaultDrive);
+  }
+
+  clearError();
 }
 
 function showInstallError(msg) {
@@ -714,7 +760,10 @@ function formatConnectError(err) {
   }
 
   if (/authentication failed/i.test(rawMessage)) {
-    return 'Connection failed: SSH authentication was rejected. Check the username and password or key file.';
+    const authMethod = deviceConfig?.authMethod || document.querySelector('.auth-btn.active')?.dataset.auth || 'password';
+    return authMethod === 'key'
+      ? 'Auth failed. Check username and SSH key.'
+      : 'Auth failed. Check username and password.';
   }
 
   if (/connection timed out/i.test(rawMessage) || /timed out/i.test(rawMessage)) {
@@ -786,7 +835,7 @@ async function toggleDeviceMount() {
     try {
       await window.vpsConnector.disconnect();
       deviceMounted = false;
-      renderDeviceScreen('Your VPS has been dismounted. Click Mount to reconnect it.');
+      renderDeviceScreen('Click Mount to reconnect it.');
       setStatus('Disconnected', 'red');
     } finally {
       setDeviceButtonsDisabled(false);
@@ -809,8 +858,8 @@ powerActionButton.addEventListener('click', toggleDeviceMount);
 
 // Open in Explorer
 explorerButton.addEventListener('click', () => {
-  const drive = connectedDrive.textContent;
-  if (window.vpsConnector.openExplorer) {
+  const drive = deviceConfig?.driveLetter;
+  if (drive && window.vpsConnector.openExplorer) {
     window.vpsConnector.openExplorer(drive);
   }
 });
@@ -822,10 +871,20 @@ removeDeviceButton.addEventListener('click', async () => {
     } catch {}
   }
 
+  if (window.vpsConnector.clearConfigLocal) {
+    window.vpsConnector.clearConfigLocal();
+  }
+
   deviceMounted = false;
   deviceConfig = null;
+  resetConnectForm();
   clearError();
-  showScreen('connect');
+  try {
+    const deps = await getDependencyState();
+    showSetupScreen(deps);
+  } catch {
+    showSetupScreen({ winfspInstalled: false, sshfsInstalled: false });
+  }
   setStatus('Disconnected', 'red');
 });
 
@@ -844,7 +903,7 @@ if (window.vpsConnector.onConnectionLost) {
     state = 'disconnected';
     deviceMounted = false;
     if (deviceConfig) {
-      renderDeviceScreen(`Connection lost: ${reason}. Click Mount to reconnect it.`);
+      renderDeviceScreen('Click Mount to reconnect it.');
       showScreen('connected');
     } else {
       showScreen('connect');

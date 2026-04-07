@@ -118,7 +118,7 @@
           <div class="form-group">
             <label class="label-with-info">
               <span>SSH Login Method</span>
-              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">Pick the same login method you use in SSH: password or private key.</span></span>
+              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble" id="auth-method-info">Use your SSH account password on this tab.</span></span>
             </label>
             <div class="auth-toggle">
               <button class="auth-btn active" data-auth="password">Password</button>
@@ -127,8 +127,8 @@
           </div>
           <div class="form-group" id="password-group">
             <label for="password" class="label-with-info">
-              <span>SSH Password <span class="field-note">when using Password</span></span>
-              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">Enter the SSH password for this VPS account.</span></span>
+              <span>SSH Password <span class="field-note" id="password-field-note">when using Password</span></span>
+              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble" id="password-info-bubble">Enter the SSH password for this VPS account.</span></span>
             </label>
             <div class="input-with-icon">
               <input type="password" id="password" placeholder="Enter your VPS root or SSH password">
@@ -136,8 +136,8 @@
           </div>
           <div class="form-group" id="key-group" style="display: none;">
             <label for="keyfile" class="label-with-info">
-              <span>SSH Private Key File <span class="field-note">when using SSH Key</span></span>
-              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble">Select the private key file you use for SSH login.</span></span>
+              <span>SSH Private Key File <span class="field-note" id="key-field-note">when using SSH Key</span></span>
+              <span class="info-tip" tabindex="0"><span class="info-tip-glyph">i</span><span class="info-bubble" id="key-info-bubble">Select the private key file you use for SSH login.</span></span>
             </label>
             <div class="file-picker">
               <input type="text" id="keyfile" placeholder="Select your private key file..." readonly>
@@ -192,6 +192,10 @@
             <div class="device-orb device-orb-2"></div>
             <div class="device-orb device-orb-3"></div>
             <div class="device-shell">
+              <div class="device-heading">
+                <h2 class="device-heading-title" id="device-heading-title">Connector Ready</h2>
+                <p class="device-heading-subtitle" id="device-heading-subtitle">Your VPS is mounted and ready to browse</p>
+              </div>
               <span class="device-status-label" id="device-status-label">Ready to Mount</span>
               <button id="btn-power-toggle" class="device-power-btn" type="button" aria-label="Toggle VPS mount">
                 <span class="device-power-ring"></span>
@@ -201,11 +205,6 @@
               </button>
               <button id="btn-power-action" class="btn btn-primary device-action-btn" type="button">Mount</button>
               <p class="device-status-copy" id="device-status-copy">Your VPS device is ready. Click Mount to attach it as a Windows drive.</p>
-              <div class="device-meta">
-                <span id="connected-host"></span>
-                <span class="device-meta-dot"></span>
-                <span id="connected-drive"></span>
-              </div>
             </div>
           </div>
           <div class="device-footer">

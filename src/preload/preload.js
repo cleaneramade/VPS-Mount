@@ -46,11 +46,24 @@ function loadConfigLocal() {
   return null;
 }
 
+function clearConfigLocal() {
+  try {
+    const appData = process.env.APPDATA || path.join(require('os').homedir(), 'AppData', 'Roaming');
+    const configPath = path.join(appData, 'vps-connector', 'config.json');
+    if (fs.existsSync(configPath)) {
+      fs.unlinkSync(configPath);
+    }
+    return true;
+  } catch {}
+  return false;
+}
+
 contextBridge.exposeInMainWorld('vpsConnector', {
   // Local sync checks — instant, no IPC
   checkDepsLocal: () => checkDepsLocal(),
   getAvailableDrivesLocal: () => getAvailableDrivesLocal(),
   loadConfigLocal: () => loadConfigLocal(),
+  clearConfigLocal: () => clearConfigLocal(),
 
   // IPC for actions that need main process
   checkDependencies: () => ipcRenderer.invoke('check-dependencies'),

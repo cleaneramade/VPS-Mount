@@ -407,7 +407,7 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex: 1;
   min-width: 0;
 }
@@ -1031,7 +1031,7 @@ body {
   position: relative;
   overflow: visible;
   border-radius: 0;
-  padding: 28px 20px 24px;
+  padding: 12px 20px 24px;
   background: transparent;
   border: none;
 }
@@ -1042,6 +1042,28 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.device-heading {
+  max-width: 400px;
+  margin-top: -18px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.device-heading-title {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.4px;
+  color: #fff;
+}
+
+.device-heading-subtitle {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .device-orb {
@@ -1088,6 +1110,7 @@ body {
   justify-content: center;
   min-height: 28px;
   padding: 0 12px;
+  margin-bottom: 22px;
   border-radius: 999px;
   background: rgba(106, 77, 255, 0.12);
   border: 1px solid rgba(106, 77, 255, 0.2);
@@ -1102,7 +1125,7 @@ body {
   position: relative;
   width: 142px;
   height: 142px;
-  margin: 24px 0 16px;
+  margin: 0;
   border: none;
   border-radius: 50%;
   background:
@@ -1166,7 +1189,7 @@ body {
 
 .device-action-btn {
   width: 180px;
-  margin-top: 0;
+  margin-top: 38px;
 }
 
 .device-status-copy {
@@ -1175,29 +1198,6 @@ body {
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.45;
-}
-
-.device-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 16px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.device-meta #connected-host,
-.device-meta #connected-drive {
-  font-family: var(--font-mono);
-  color: var(--brand-300);
-}
-
-.device-meta-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.24);
 }
 
 .device-footer {
@@ -1229,7 +1229,7 @@ body {
 
 /* ──── Status Bar ──── */
 .status-bar {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 8px;
   padding: 10px 24px;
@@ -1274,16 +1274,16 @@ body {
 /* ──── Error message ──── */
 .error-msg {
   color: var(--danger);
-  font-size: 13px;
+  font-size: 12px;
   margin-top: 8px;
-  padding: 8px 12px;
+  padding: 8px 10px;
   background: rgba(243, 139, 168, 0.06);
   border: 1px solid rgba(243, 139, 168, 0.2);
   border-radius: var(--radius);
   text-align: center;
   line-height: 1.25;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .connect-error-footer {
