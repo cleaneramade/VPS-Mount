@@ -10,7 +10,7 @@ VPS Mount is a Windows desktop app that turns any SSH-accessible Linux server in
 - **Guided dependency setup** — detects missing dependencies and gives you two ways to install them (see below)
 - **Password and SSH key authentication** — use whichever your server supports
 - **System tray integration** — quick mount/unmount and status at a glance
-- **Multiple saved devices** — store connection details for each of your servers
+- **Remembers your last connection** — host, port, username, and drive letter are pre-filled next time you open the app (passwords are never saved)
 - **Clean GUI** — no config files, no command line
 
 ## Requirements
