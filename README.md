@@ -82,4 +82,4 @@ Released under the MIT License — see [LICENSE](LICENSE) for details.
 
 ## Author
 
-Made by **Cleanera Made** · Kadeem Johnson · [@cleaneramade on X](https://x.com/cleaneramade.com)
+Made by **Cleanera Made** · Kadeem Johnson · [@CleaneraMade on X](https://x.com/CleaneraMade)
