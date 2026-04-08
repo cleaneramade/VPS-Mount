@@ -41,7 +41,7 @@ function clearConfigLocal() {
   return false;
 }
 
-contextBridge.exposeInMainWorld('vpsConnector', {
+contextBridge.exposeInMainWorld('vpsMount', {
   // App info
   appVersion: app.getVersion,
 

@@ -1,9 +1,9 @@
 // Window controls
-document.getElementById('wc-close').addEventListener('click', () => window.vpsConnector.windowClose());
-document.getElementById('wc-minimize').addEventListener('click', () => window.vpsConnector.windowMinimize());
+document.getElementById('wc-close').addEventListener('click', () => window.vpsMount.windowClose());
+document.getElementById('wc-minimize').addEventListener('click', () => window.vpsMount.windowMinimize());
 
 // Set app version dynamically
-document.getElementById('app-version').textContent = `Version ${window.vpsConnector.appVersion()}`;
+document.getElementById('app-version').textContent = `Version ${window.vpsMount.appVersion()}`;
 
 // State
 let state = 'checking';
@@ -34,7 +34,7 @@ const removeDeviceButton = document.getElementById('btn-remove-device');
 
 const headerContent = {
   setup: {
-    title: 'Prepare Your Connector',
+    title: 'Set Up VPS Mount',
     subtitle: 'Install the required tools to mount your VPS as a local drive',
   },
   connect: {
@@ -42,7 +42,7 @@ const headerContent = {
     subtitle: '',
   },
   connected: {
-    title: 'Connector Ready',
+    title: 'VPS Mounted',
     subtitle: 'Your VPS is mounted and ready to browse',
   },
 };
@@ -384,7 +384,7 @@ function renderDeviceScreen(message) {
   connectedDeviceCard.classList.toggle('is-unmounted', !deviceMounted);
 
   if (deviceMounted) {
-    deviceHeadingTitle.textContent = 'Connector Ready';
+    deviceHeadingTitle.textContent = 'VPS Mounted';
     deviceHeadingSubtitle.textContent = 'Your VPS is mounted and ready to browse';
     deviceStatusLabel.textContent = 'Mounted';
     deviceStatusCopy.textContent = message || 'Click Dismount to safely unmount it.';
@@ -420,7 +420,7 @@ async function connectDevice(config, options = {}) {
   }
 
   try {
-    const result = await window.vpsConnector.connect(config);
+    const result = await window.vpsMount.connect(config);
     deviceConfig = result.config || config;
     deviceMounted = true;
     state = 'connected';
@@ -452,12 +452,12 @@ async function connectDevice(config, options = {}) {
 
 // Initialize — all sync, no IPC
 async function getDependencyState() {
-  if (window.vpsConnector.checkDependencies) {
+  if (window.vpsMount.checkDependencies) {
     try {
-      return await window.vpsConnector.checkDependencies();
+      return await window.vpsMount.checkDependencies();
     } catch {}
   }
-  return window.vpsConnector.checkDepsLocal();
+  return window.vpsMount.checkDepsLocal();
 }
 
 function buildDependencyStatusMessage(deps, options = {}) {
@@ -568,7 +568,7 @@ function showSetupScreen(deps) {
 
 function populateDriveLetters() {
   try {
-    const drives = window.vpsConnector.getAvailableDrivesLocal();
+    const drives = window.vpsMount.getAvailableDrivesLocal();
     const letters = drives.length ? drives : ['V:'];
     driveLetterSelect.innerHTML = '';
     letters.forEach(letter => {
@@ -586,7 +586,7 @@ function populateDriveLetters() {
 
 function loadSavedConfig() {
   try {
-    const config = window.vpsConnector.loadConfigLocal();
+    const config = window.vpsMount.loadConfigLocal();
     if (!config) return;
     if (config.host) document.getElementById('host').value = config.host;
     if (config.username) document.getElementById('username').value = config.username;
@@ -641,8 +641,8 @@ function openDependencyLink(event) {
   }
 
   const url = event.currentTarget.getAttribute('href');
-  if (window.vpsConnector.openExternal) {
-    window.vpsConnector.openExternal(url);
+  if (window.vpsMount.openExternal) {
+    window.vpsMount.openExternal(url);
   }
 }
 
@@ -657,7 +657,7 @@ async function runPowerShellInstall(which) {
   button.innerHTML = '<span class="spinner-small"></span> Installing...';
 
   try {
-    const result = await window.vpsConnector.installDependency(which);
+    const result = await window.vpsMount.installDependency(which);
     if (result.success) {
       showInstallError(result.output || 'Install complete. Restarting app...');
       return;
@@ -713,8 +713,8 @@ document.getElementById('btn-recheck').addEventListener('click', async () => {
       recheckBtn.disabled = false;
     }
   } catch (err) {
-    const fallbackDeps = window.vpsConnector.checkDepsLocal
-      ? window.vpsConnector.checkDepsLocal()
+    const fallbackDeps = window.vpsMount.checkDepsLocal
+      ? window.vpsMount.checkDepsLocal()
       : { winfspInstalled: false, sshfsInstalled: false };
     showInstallError(buildDependencyStatusMessage(fallbackDeps));
     recheckBtn.textContent = 'Verify Installation';
@@ -836,7 +836,7 @@ async function toggleDeviceMount() {
     setStatus('Dismounting...', 'yellow pulse');
 
     try {
-      await window.vpsConnector.disconnect();
+      await window.vpsMount.disconnect();
       deviceMounted = false;
       renderDeviceScreen('Click Mount to reconnect it.');
       setStatus('Disconnected', 'red');
@@ -862,20 +862,20 @@ powerActionButton.addEventListener('click', toggleDeviceMount);
 // Open in Explorer
 explorerButton.addEventListener('click', () => {
   const drive = deviceConfig?.driveLetter;
-  if (drive && window.vpsConnector.openExplorer) {
-    window.vpsConnector.openExplorer(drive);
+  if (drive && window.vpsMount.openExplorer) {
+    window.vpsMount.openExplorer(drive);
   }
 });
 
 removeDeviceButton.addEventListener('click', async () => {
   if (deviceMounted) {
     try {
-      await window.vpsConnector.disconnect();
+      await window.vpsMount.disconnect();
     } catch {}
   }
 
-  if (window.vpsConnector.clearConfigLocal) {
-    window.vpsConnector.clearConfigLocal();
+  if (window.vpsMount.clearConfigLocal) {
+    window.vpsMount.clearConfigLocal();
   }
 
   deviceMounted = false;
@@ -897,16 +897,16 @@ removeDeviceButton.addEventListener('click', async () => {
 
 // Browse for key file
 document.getElementById('btn-browse').addEventListener('click', async () => {
-  if (!window.vpsConnector.selectKeyFile) return;
-  const filePath = await window.vpsConnector.selectKeyFile();
+  if (!window.vpsMount.selectKeyFile) return;
+  const filePath = await window.vpsMount.selectKeyFile();
   if (filePath) {
     document.getElementById('keyfile').value = filePath;
   }
 });
 
 // Connection lost handler
-if (window.vpsConnector.onConnectionLost) {
-  window.vpsConnector.onConnectionLost((reason) => {
+if (window.vpsMount.onConnectionLost) {
+  window.vpsMount.onConnectionLost((reason) => {
     state = 'disconnected';
     deviceMounted = false;
     if (deviceConfig) {

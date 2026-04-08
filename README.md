@@ -74,7 +74,7 @@ Before you use VPS Mount, there are three things you should know.
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, project structure, and guidelines.
+Found a bug or have an idea? [Open an issue](https://github.com/cleaneramade/VPS-Mount/issues) or submit a pull request.
 
 ## License
 
