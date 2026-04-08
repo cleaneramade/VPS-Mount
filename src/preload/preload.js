@@ -1,19 +1,15 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, app } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { WINFSP_PATHS, SSHFS_PATHS } = require('../main/dependency-checker');
+const { getAvailableDriveLetters } = require('../main/drive-utils');
 
 // Direct filesystem checks — no IPC needed
 function checkDepsLocal() {
-  const winfspInstalled = fs.existsSync('C:\\Program Files (x86)\\WinFsp') || fs.existsSync('C:\\Program Files\\WinFsp');
+  const winfspInstalled = WINFSP_PATHS.some(p => fs.existsSync(p));
 
   let sshfsBinaryPath = null;
-  const sshfsPaths = [
-    'C:\\Program Files\\SSHFS-Win\\bin\\sshfs.exe',
-    'C:\\Program Files (x86)\\SSHFS-Win\\bin\\sshfs.exe',
-    'C:\\Program Files\\SSHFS-Win\\bin\\sshfs-win.exe',
-    'C:\\Program Files (x86)\\SSHFS-Win\\bin\\sshfs-win.exe',
-  ];
-  for (const p of sshfsPaths) {
+  for (const p of SSHFS_PATHS) {
     if (fs.existsSync(p)) { sshfsBinaryPath = p; break; }
   }
 
@@ -21,20 +17,7 @@ function checkDepsLocal() {
 }
 
 function getAvailableDrivesLocal() {
-  const used = new Set();
-  for (let code = 65; code <= 90; code++) {
-    const letter = String.fromCharCode(code);
-    try { if (fs.existsSync(letter + ':\\')) used.add(letter); } catch {}
-  }
-  const skip = new Set(['A', 'B', 'C']);
-  const available = [];
-  for (let code = 90; code >= 68; code--) {
-    const letter = String.fromCharCode(code);
-    if (!used.has(letter) && !skip.has(letter)) available.push(letter + ':');
-  }
-  const vIndex = available.indexOf('V:');
-  if (vIndex > 0) { available.splice(vIndex, 1); available.unshift('V:'); }
-  return available;
+  return getAvailableDriveLetters();
 }
 
 function loadConfigLocal() {
@@ -59,6 +42,9 @@ function clearConfigLocal() {
 }
 
 contextBridge.exposeInMainWorld('vpsConnector', {
+  // App info
+  appVersion: app.getVersion,
+
   // Local sync checks — instant, no IPC
   checkDepsLocal: () => checkDepsLocal(),
   getAvailableDrivesLocal: () => getAvailableDrivesLocal(),

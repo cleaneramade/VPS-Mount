@@ -133,26 +133,6 @@ body {
   color: var(--text-secondary);
 }
 
-.titlebar-logo {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.titlebar-logo img {
-  width: 22px;
-  height: 22px;
-}
-
-.titlebar-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-dim);
-  letter-spacing: 0.3px;
-}
-
 .titlebar-version {
   font-size: 11px;
   font-weight: 600;
@@ -226,21 +206,6 @@ body {
   border-color: #a67f36;
 }
 
-.wc-maximize {
-  background: #61c555;
-  border-color: #2dac2f;
-  color: #2a6218;
-  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.1);
-}
-.wc-maximize:hover {
-  background: #74d468;
-  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.15), 0 0.5px 1px 0 rgba(0,0,0,0.2);
-}
-.wc-maximize:active {
-  background: #4a9741;
-  border-color: #428234;
-}
-
 /* ──── Content area ──── */
 .content {
   display: flex;
@@ -276,19 +241,6 @@ body {
   text-align: center;
   gap: 4px;
   margin-bottom: 32px;
-}
-
-.app-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #1e1b3a 0%, #16132e 100%);
-  border: 1px solid rgba(106, 77, 255, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(106, 77, 255, 0.08);
 }
 
 .app-header-text {

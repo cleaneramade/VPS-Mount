@@ -65,11 +65,4 @@ function setHandlers({ showWindow, disconnect, quit }) {
   onQuit = quit;
 }
 
-function destroy() {
-  if (tray) {
-    tray.destroy();
-    tray = null;
-  }
-}
-
-module.exports = { createTray, setConnected, setHandlers, destroy };
+module.exports = { createTray, setConnected, setHandlers };

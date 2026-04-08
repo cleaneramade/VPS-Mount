@@ -40,4 +40,4 @@ function checkDependencies() {
   };
 }
 
-module.exports = { checkDependencies };
+module.exports = { checkDependencies, WINFSP_PATHS, SSHFS_PATHS };

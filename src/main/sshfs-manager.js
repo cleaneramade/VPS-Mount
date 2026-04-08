@@ -13,6 +13,8 @@ function buildArgs({ username, host, remotePath, driveLetter, port, authMethod, 
     driveLetter,
     `-p${port}`,
     `-ovolname=VPS(${host})`,
+    // Note: Host key verification is disabled for usability (no interactive known_hosts management in GUI).
+    // This accepts MITM attacks silently on untrusted networks. Users should only connect to trusted hosts.
     '-oStrictHostKeyChecking=no',
     '-oUserKnownHostsFile=/dev/null',
     '-oidmap=user',
@@ -45,6 +47,19 @@ function mount(config, sshfsBinaryPath) {
     if (sshfsProcess) {
       reject(new Error('Already connected. Disconnect first.'));
       return;
+    }
+
+    if (config.authMethod !== 'password') {
+      if (!config.keyFilePath) {
+        reject(new Error('SSH key file path is required for key authentication.'));
+        return;
+      }
+      try {
+        fs.accessSync(config.keyFilePath, fs.constants.R_OK);
+      } catch {
+        reject(new Error(`SSH key file not found or not readable: ${config.keyFilePath}`));
+        return;
+      }
     }
 
     const args = ['-f', ...buildArgs(config)];
@@ -153,10 +168,14 @@ function mount(config, sshfsBinaryPath) {
   });
 }
 
+function isValidPid(pid) {
+  return Number.isInteger(pid) && pid > 0;
+}
+
 function disconnect() {
   return new Promise((resolve) => {
     stopHealthMonitor();
-    if (sshfsPid) {
+    if (isValidPid(sshfsPid)) {
       exec(`taskkill /PID ${sshfsPid} /T /F`, () => {
         cleanup();
         resolve();
@@ -180,7 +199,7 @@ function cleanup() {
 function startHealthMonitor() {
   stopHealthMonitor();
   healthInterval = setInterval(() => {
-    if (!sshfsPid) {
+    if (!isValidPid(sshfsPid)) {
       stopHealthMonitor();
       return;
     }

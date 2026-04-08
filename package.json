@@ -2,6 +2,16 @@
   "name": "vps-mount",
   "version": "1.0.0",
   "description": "Mount VPS filesystem as a Windows drive letter via SSHFS",
+  "license": "MIT",
+  "author": "Kadeem Johnson (Cleanera Made)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cleaneramade/vps-mount.git"
+  },
+  "homepage": "https://github.com/cleaneramade/vps-mount#readme",
+  "bugs": {
+    "url": "https://github.com/cleaneramade/vps-mount/issues"
+  },
   "main": "src/main/main.js",
   "scripts": {
     "build:icon": "electron scripts/convert-logo.js",

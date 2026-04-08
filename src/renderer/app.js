@@ -2,6 +2,9 @@
 document.getElementById('wc-close').addEventListener('click', () => window.vpsConnector.windowClose());
 document.getElementById('wc-minimize').addEventListener('click', () => window.vpsConnector.windowMinimize());
 
+// Set app version dynamically
+document.getElementById('app-version').textContent = `Version ${window.vpsConnector.appVersion()}`;
+
 // State
 let state = 'checking';
 

@@ -34,12 +34,13 @@ const INSTALLERS = {
 };
 
 function debugLog(msg) {
+  // Only write debug logs in development mode (when app is not packaged)
+  if (app.isPackaged) return;
+
   try {
     fs.appendFileSync(DEBUG_LOG, new Date().toISOString() + ' ' + msg + '\r\n');
   } catch {}
 }
-
-debugLog('ipc-handlers.js MODULE LOADED');
 
 let cachedDeps = null;
 
@@ -218,14 +219,6 @@ function registerIpcHandlers() {
     });
   });
 
-  ipcMain.handle('get-available-drives', () => {
-    return getAvailableDriveLetters();
-  });
-
-  ipcMain.handle('test-connection', async (_event, config) => {
-    return testConnection(normalizeConnectionConfig(config));
-  });
-
   ipcMain.handle('connect', async (_event, config) => {
     const normalizedConfig = normalizeConnectionConfig(config);
     await testConnection(normalizedConfig);
@@ -252,10 +245,6 @@ function registerIpcHandlers() {
     return { success: true };
   });
 
-  ipcMain.handle('get-status', () => {
-    return { connected: sshfsManager.isConnected() };
-  });
-
   ipcMain.handle('select-key-file', async () => {
     const { BrowserWindow } = require('electron');
     const win = BrowserWindow.getFocusedWindow();
@@ -263,7 +252,7 @@ function registerIpcHandlers() {
       title: 'Select SSH Private Key',
       properties: ['openFile'],
       filters: [
-        { name: 'Key Files', extensions: ['pem', 'ppk', 'key', 'pub'] },
+        { name: 'Private Key Files', extensions: ['pem', 'ppk', 'key'] },
         { name: 'All Files', extensions: ['*'] },
       ],
     });
@@ -271,11 +260,11 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('open-external', (_event, url) => {
-    shell.openExternal(url);
+    return shell.openExternal(url);
   });
 
   ipcMain.handle('open-explorer', (_event, driveLetter) => {
-    shell.openPath(driveLetter + '\\');
+    return shell.openPath(driveLetter + '\\');
   });
 
   ipcMain.handle('install-dependency', async (_event, which) => {
@@ -331,23 +320,9 @@ function registerIpcHandlers() {
       debugLog(`Installer flow failed for ${which}: ${err && err.message ? err.message : err}`);
       return { success: false, error: 'Failed to complete the installer: ' + (err.message || 'unknown error') };
     } finally {
-      setTimeout(() => {
-        try { fs.unlinkSync(installScript); } catch {}
-        try { fs.unlinkSync(wrapperScript); } catch {}
-      }, 900000);
+      try { fs.unlinkSync(installScript); } catch {}
+      try { fs.unlinkSync(wrapperScript); } catch {}
     }
-  });
-
-  ipcMain.handle('load-config', () => {
-    try {
-      const configPath = getConfigPath();
-      if (fs.existsSync(configPath)) {
-        return JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      }
-    } catch {
-      // ignore
-    }
-    return null;
   });
 }
 
