@@ -919,6 +919,37 @@ if (window.vpsMount.onConnectionLost) {
   });
 }
 
+// Auto-reconnect status handler
+if (window.vpsMount.onConnectionStatus) {
+  window.vpsMount.onConnectionStatus(({ status, detail }) => {
+    if (status === 'reconnecting') {
+      state = 'connecting';
+      deviceMounted = false;
+      if (deviceConfig) {
+        renderDeviceScreen('Reconnecting to VPS...');
+        showScreen('connected');
+      }
+      setStatus('Reconnecting...' + (detail ? ' ' + detail : ''), 'yellow pulse');
+    } else if (status === 'reconnected') {
+      state = 'connected';
+      deviceMounted = true;
+      if (deviceConfig) {
+        renderDeviceScreen();
+        showScreen('connected');
+      }
+      setStatus('Connected to ' + detail, 'green');
+    } else if (status === 'gave-up') {
+      state = 'disconnected';
+      deviceMounted = false;
+      if (deviceConfig) {
+        renderDeviceScreen('Reconnect failed. Click Mount to retry.');
+        showScreen('connected');
+      }
+      setStatus('Reconnect failed', 'red');
+    }
+  });
+}
+
 // Start
 initInfoTips();
 initDriveLetterDropdown();

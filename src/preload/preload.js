@@ -62,6 +62,9 @@ contextBridge.exposeInMainWorld('vpsMount', {
   onConnectionLost: (callback) => {
     ipcRenderer.on('connection-lost', (_event, reason) => callback(reason));
   },
+  onConnectionStatus: (callback) => {
+    ipcRenderer.on('connection-status', (_event, payload) => callback(payload));
+  },
 
   // Window controls
   windowMinimize: () => ipcRenderer.send('window-minimize'),

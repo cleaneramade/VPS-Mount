@@ -59,10 +59,16 @@ function setConnected(connected, host) {
   }
 }
 
+function setReconnecting(detail) {
+  if (tray) {
+    tray.setToolTip(`VPS Mount - Reconnecting...${detail ? ` (${detail})` : ''}`);
+  }
+}
+
 function setHandlers({ showWindow, disconnect, quit }) {
   onShowWindow = showWindow;
   onDisconnect = disconnect;
   onQuit = quit;
 }
 
-module.exports = { createTray, setConnected, setHandlers };
+module.exports = { createTray, setConnected, setHandlers, setReconnecting };

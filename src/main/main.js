@@ -127,6 +127,20 @@ app.whenReady().then(() => {
       mainWindow.webContents.send('connection-lost', reason);
     }
   });
+
+  // Handle auto-reconnect status updates
+  sshfsManager.setStatusHandler((status, detail) => {
+    if (status === 'reconnecting') {
+      trayManager.setReconnecting(detail);
+    } else if (status === 'reconnected') {
+      trayManager.setConnected(true, detail);
+    } else if (status === 'gave-up') {
+      trayManager.setConnected(false);
+    }
+    if (mainWindow) {
+      mainWindow.webContents.send('connection-status', { status, detail });
+    }
+  });
 });
 
 app.on('before-quit', () => {

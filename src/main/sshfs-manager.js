@@ -6,6 +6,24 @@ let sshfsProcess = null;
 let sshfsPid = null;
 let healthInterval = null;
 let onConnectionLost = null;
+let onStatus = null;
+
+// Auto-remount state. lastConfig (incl. password) is kept in memory only for the
+// duration of the session so an unexpected drop can be remounted transparently.
+let lastConfig = null;
+let lastBinaryPath = null;
+let userDisconnect = false;
+let reconnecting = false;
+let reconnectAttempt = 0;
+let reconnectTimer = null;
+const MAX_RECONNECT_ATTEMPTS = 10;
+
+// Zombie-mount watchdog: detects the case where sshfs.exe is still running but the
+// SSH channel inside it is dead (half-open TCP), leaving a frozen drive forever.
+let probeInFlight = false;
+let probeFailures = 0;
+const PROBE_TIMEOUT_MS = 30000;
+const PROBE_MAX_FAILURES = 2;
 
 function buildArgs({ username, host, remotePath, driveLetter, port, authMethod, keyFilePath }) {
   const args = [
@@ -29,14 +47,25 @@ function buildArgs({ username, host, remotePath, driveLetter, port, authMethod, 
     '-ofollow_symlinks',
     '-orellinks',
     '-ofstypename=SSHFS',
+    // Keepalives keep the SSH session alive through NAT/firewall idle timeouts and
+    // detect dead links. CountMax is generous (15s x 8 = ~120s) because keepalive
+    // replies queue behind bulk data during large transfers — an aggressive value
+    // would itself drop the connection mid-transfer.
+    '-oServerAliveInterval=15',
+    '-oServerAliveCountMax=8',
+    '-oTCPKeepAlive=yes',
+    '-oConnectTimeout=15',
   ];
 
   if (authMethod === 'password') {
     args.push('-oPreferredAuthentications=password');
     args.push('-opassword_stdin');
+    // No -oreconnect here: sshfs cannot re-read the password from stdin on its own
+    // reconnect. Password sessions are healed by the app-level auto-remount instead.
   } else {
     args.push('-oPreferredAuthentications=publickey');
     args.push(`-oIdentityFile=${keyFilePath.replace(/\\/g, '/')}`);
+    args.push('-oreconnect');
   }
 
   return args;
@@ -47,6 +76,13 @@ function mount(config, sshfsBinaryPath) {
     if (sshfsProcess) {
       reject(new Error('Already connected. Disconnect first.'));
       return;
+    }
+
+    // A user-initiated mount supersedes any pending auto-reconnect attempt.
+    // (When called from attemptReconnect the timer has already fired and is null,
+    // so this only triggers for user mounts that preempt a scheduled reconnect.)
+    if (reconnectTimer) {
+      cancelReconnect();
     }
 
     if (config.authMethod !== 'password') {
@@ -84,6 +120,11 @@ function mount(config, sshfsBinaryPath) {
       }
       sshfsProcess = proc;
       sshfsPid = proc.pid;
+      lastConfig = config;
+      lastBinaryPath = sshfsBinaryPath;
+      userDisconnect = false;
+      reconnecting = false;
+      reconnectAttempt = 0;
       startHealthMonitor();
       resolve({ pid: proc.pid });
     }
@@ -147,9 +188,7 @@ function mount(config, sshfsBinaryPath) {
       } else {
         // Process died after successful mount
         cleanup();
-        if (onConnectionLost) {
-          onConnectionLost('SSHFS process exited unexpectedly');
-        }
+        scheduleReconnect('SSHFS process exited unexpectedly');
       }
     });
 
@@ -174,6 +213,11 @@ function isValidPid(pid) {
 
 function disconnect() {
   return new Promise((resolve) => {
+    // User-initiated: suppress auto-remount and drop in-memory credentials.
+    userDisconnect = true;
+    cancelReconnect();
+    lastConfig = null;
+    lastBinaryPath = null;
     stopHealthMonitor();
     if (isValidPid(sshfsPid)) {
       exec(`taskkill /PID ${sshfsPid} /T /F`, () => {
@@ -190,6 +234,62 @@ function disconnect() {
   });
 }
 
+function cancelReconnect() {
+  reconnecting = false;
+  reconnectAttempt = 0;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
+function scheduleReconnect(reason) {
+  // Already (re)connected — e.g. a user mount won a race against a reconnect attempt.
+  if (sshfsProcess) return;
+  if (userDisconnect || !lastConfig) {
+    if (onConnectionLost) {
+      onConnectionLost(reason);
+    }
+    return;
+  }
+  reconnecting = true;
+  reconnectAttempt += 1;
+  if (reconnectAttempt > MAX_RECONNECT_ATTEMPTS) {
+    cancelReconnect();
+    if (onStatus) {
+      onStatus('gave-up', reason);
+    }
+    if (onConnectionLost) {
+      onConnectionLost('Reconnect failed after multiple attempts.');
+    }
+    return;
+  }
+  // Exponential backoff: 2s, 4s, 8s... capped at 30s.
+  const delay = Math.min(2000 * 2 ** (reconnectAttempt - 1), 30000);
+  if (onStatus) {
+    onStatus('reconnecting', `Attempt ${reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS}`);
+  }
+  reconnectTimer = setTimeout(attemptReconnect, delay);
+}
+
+function attemptReconnect() {
+  reconnectTimer = null;
+  if (userDisconnect || !lastConfig || sshfsProcess) return;
+  mount(lastConfig, lastBinaryPath)
+    .then(() => {
+      const host = lastConfig ? lastConfig.host : '';
+      reconnecting = false;
+      reconnectAttempt = 0;
+      if (onStatus) {
+        onStatus('reconnected', host);
+      }
+    })
+    .catch((err) => {
+      // Includes transient "drive letter in use" while WinFsp frees it — backoff retries.
+      scheduleReconnect(err.message);
+    });
+}
+
 function cleanup() {
   stopHealthMonitor();
   sshfsProcess = null;
@@ -198,6 +298,7 @@ function cleanup() {
 
 function startHealthMonitor() {
   stopHealthMonitor();
+  probeFailures = 0;
   healthInterval = setInterval(() => {
     if (!isValidPid(sshfsPid)) {
       stopHealthMonitor();
@@ -206,12 +307,44 @@ function startHealthMonitor() {
     exec(`tasklist /FI "PID eq ${sshfsPid}" /NH`, (err, stdout) => {
       if (err || !stdout.includes(String(sshfsPid))) {
         cleanup();
-        if (onConnectionLost) {
-          onConnectionLost('SSHFS process is no longer running');
-        }
+        scheduleReconnect('SSHFS process is no longer running');
       }
     });
+    probeMount();
   }, 5000);
+}
+
+// Checks that the mounted drive actually responds, not just that the process exists.
+// A stat of the drive root goes through the SSH channel; the timeout is generous
+// (30s, 2 consecutive failures = ~1min unresponsive) so a saturated pipe during a
+// large transfer is never mistaken for a dead mount.
+function probeMount() {
+  if (probeInFlight || !sshfsProcess || !lastConfig) return;
+  probeInFlight = true;
+  let timer = null;
+  const timeout = new Promise((_, timeoutReject) => {
+    timer = setTimeout(() => timeoutReject(new Error('probe timeout')), PROBE_TIMEOUT_MS);
+  });
+  Promise.race([fs.promises.stat(lastConfig.driveLetter + '\\'), timeout])
+    .then(() => {
+      probeFailures = 0;
+    })
+    .catch(() => {
+      if (!sshfsProcess || userDisconnect) return;
+      probeFailures += 1;
+      if (probeFailures >= PROBE_MAX_FAILURES) {
+        probeFailures = 0;
+        // Kill the zombie process; its 'close' handler runs cleanup() and
+        // scheduleReconnect(), so the normal auto-remount path takes over.
+        if (isValidPid(sshfsPid)) {
+          exec(`taskkill /PID ${sshfsPid} /T /F`, () => {});
+        }
+      }
+    })
+    .finally(() => {
+      if (timer) clearTimeout(timer);
+      probeInFlight = false;
+    });
 }
 
 function stopHealthMonitor() {
@@ -222,11 +355,17 @@ function stopHealthMonitor() {
 }
 
 function isConnected() {
-  return sshfsProcess !== null && sshfsPid !== null;
+  // A reconnect in progress still counts as connected so the app stays in the
+  // tray (and doesn't quit) while the mount is being restored.
+  return (sshfsProcess !== null && sshfsPid !== null) || reconnecting;
 }
 
 function setConnectionLostHandler(handler) {
   onConnectionLost = handler;
 }
 
-module.exports = { mount, disconnect, isConnected, setConnectionLostHandler };
+function setStatusHandler(handler) {
+  onStatus = handler;
+}
+
+module.exports = { mount, disconnect, isConnected, setConnectionLostHandler, setStatusHandler };
