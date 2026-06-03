@@ -38,8 +38,8 @@ const headerContent = {
     subtitle: 'Install the required tools to mount your VPS as a local drive',
   },
   connect: {
-    title: '',
-    subtitle: '',
+    title: 'VPS Mount',
+    subtitle: 'Mount your VPS as a local drive',
   },
   connected: {
     title: 'VPS Mounted',
