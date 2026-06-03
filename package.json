@@ -17,7 +17,9 @@
     "build:icon": "electron scripts/convert-logo.js",
     "start": "electron .",
     "dev": "electron . --dev",
-    "build": "electron-builder --win"
+    "build": "electron-builder --win",
+    "smoke": "electron scripts/smoke-test.js",
+    "smoke:packaged": "electron scripts/smoke-test.js --packaged"
   },
   "dependencies": {
     "ssh2": "^1.17.0"

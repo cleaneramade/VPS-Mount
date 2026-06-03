@@ -1,8 +1,11 @@
-const { contextBridge, ipcRenderer, app } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { WINFSP_PATHS, SSHFS_PATHS } = require('../main/dependency-checker');
 const { getAvailableDriveLetters } = require('../main/drive-utils');
+// Note: electron's `app` module is main-process only and is undefined in a
+// preload script. Read the version straight from package.json instead.
+const { version: APP_VERSION } = require('../../package.json');
 
 // Direct filesystem checks — no IPC needed
 function checkDepsLocal() {
@@ -43,7 +46,7 @@ function clearConfigLocal() {
 
 contextBridge.exposeInMainWorld('vpsMount', {
   // App info
-  appVersion: app.getVersion,
+  appVersion: () => APP_VERSION,
 
   // Local sync checks — instant, no IPC
   checkDepsLocal: () => checkDepsLocal(),

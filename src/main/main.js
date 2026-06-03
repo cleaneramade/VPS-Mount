@@ -37,7 +37,10 @@ function createWindow() {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      // Must stay false: the preload does direct fs/module requires (dependency
+      // checks, config load) which a sandboxed preload cannot do. The renderer
+      // itself stays isolated via contextIsolation + nodeIntegration: false.
+      sandbox: false,
     },
   });
 
