@@ -30,13 +30,42 @@ function findSshfsBinary() {
   return null;
 }
 
+// rclone is the preferred mount engine (parallel transfers + local write cache —
+// massively faster than sshfs for bulk copies). Installed via winget, whose
+// package dir embeds the version, so scan rather than hardcode.
+function findRcloneBinary() {
+  const candidates = [];
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const wingetPkgs = path.join(localAppData, 'Microsoft', 'WinGet', 'Packages');
+  try {
+    for (const pkg of fs.readdirSync(wingetPkgs)) {
+      if (!pkg.startsWith('Rclone.Rclone_')) continue;
+      const pkgDir = path.join(wingetPkgs, pkg);
+      for (const sub of fs.readdirSync(pkgDir)) {
+        candidates.push(path.join(pkgDir, sub, 'rclone.exe'));
+      }
+    }
+  } catch {}
+  candidates.push(path.join(localAppData, 'Microsoft', 'WinGet', 'Links', 'rclone.exe'));
+  candidates.push('C:\\Program Files\\rclone\\rclone.exe');
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c)) return c;
+    } catch {}
+  }
+  return null;
+}
+
 function checkDependencies() {
   const winfspInstalled = checkWinFsp();
   const sshfsBinaryPath = findSshfsBinary();
+  const rcloneBinaryPath = findRcloneBinary();
   return {
     winfspInstalled,
     sshfsInstalled: sshfsBinaryPath !== null,
     sshfsBinaryPath,
+    rcloneInstalled: rcloneBinaryPath !== null,
+    rcloneBinaryPath,
   };
 }
 

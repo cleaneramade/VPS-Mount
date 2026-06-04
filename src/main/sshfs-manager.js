@@ -71,7 +71,67 @@ function buildArgs({ username, host, remotePath, driveLetter, port, authMethod, 
   return args;
 }
 
-function mount(config, sshfsBinaryPath) {
+// --- rclone engine -----------------------------------------------------------
+// rclone mounts the same drive letter via WinFsp but with a local write cache
+// (Explorer copies complete at disk speed, uploads continue in the background
+// over 16 parallel connections) — vastly faster than sshfs for bulk transfers.
+
+function isRcloneBinary(binaryPath) {
+  return path.basename(binaryPath || '').toLowerCase().includes('rclone');
+}
+
+// rclone refuses plaintext passwords on the command line; they must be obscured
+// (reversible encoding, NOT encryption — same trust level as password_stdin).
+function obscurePassword(binaryPath, password) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(binaryPath, ['obscure', password], { windowsHide: true });
+    let out = '';
+    let errOut = '';
+    proc.stdout.on('data', (d) => { out += d.toString(); });
+    proc.stderr.on('data', (d) => { errOut += d.toString(); });
+    proc.on('error', (err) => reject(new Error(`Failed to run rclone obscure: ${err.message}`)));
+    proc.on('close', (code) => {
+      if (code === 0 && out.trim()) resolve(out.trim());
+      else reject(new Error(`rclone obscure failed: ${errOut.slice(-200)}`));
+    });
+  });
+}
+
+function buildRcloneArgs({ username, host, remotePath, driveLetter, port, authMethod, keyFilePath }, obscuredPassword) {
+  const args = [
+    'mount',
+    // On-the-fly sftp remote — no rclone.conf needed, config comes from the GUI.
+    `:sftp:${remotePath}`,
+    driveLetter,
+    '--sftp-host', host,
+    '--sftp-user', username,
+    '--sftp-port', String(port),
+    // Note: like the sshfs config (StrictHostKeyChecking=no), host keys are not
+    // verified. Only connect to trusted hosts on trusted networks.
+    '--vfs-cache-mode', 'full',
+    '--vfs-cache-max-size', '10G',
+    '--vfs-write-back', '5s',
+    '--transfers', '16',
+    '--checkers', '32',
+    '--dir-cache-time', '15s',
+    '--volname', `VPS(${host})`,
+    '--contimeout', '15s',
+    // Register with the Windows network provider so Explorer can query the
+    // connection state — without this the drive works but shows a red X icon.
+    '--network-mode',
+  ];
+
+  if (authMethod === 'password') {
+    args.push('--sftp-pass', obscuredPassword);
+  } else {
+    args.push('--sftp-key-file', keyFilePath);
+  }
+
+  return args;
+}
+// -----------------------------------------------------------------------------
+
+function mount(config, mountBinaryPath) {
   return new Promise((resolve, reject) => {
     if (sshfsProcess) {
       reject(new Error('Already connected. Disconnect first.'));
@@ -98,112 +158,133 @@ function mount(config, sshfsBinaryPath) {
       }
     }
 
-    const args = ['-f', ...buildArgs(config)];
-    const sshfsDir = path.dirname(sshfsBinaryPath);
-
-    const proc = spawn(sshfsBinaryPath, args, {
-      env: { ...process.env, PATH: sshfsDir + ';' + (process.env.PATH || '') },
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
-
-    let debugOutput = '';
+    const useRclone = isRcloneBinary(mountBinaryPath);
     let resolved = false;
-    let mountCheckInterval = null;
 
-    function finishMounted() {
-      if (resolved) return;
-      resolved = true;
-      if (mountCheckInterval) {
-        clearInterval(mountCheckInterval);
-        mountCheckInterval = null;
+    function launch(args) {
+      const binDir = path.dirname(mountBinaryPath);
+
+      const proc = spawn(mountBinaryPath, args, {
+        env: { ...process.env, PATH: binDir + ';' + (process.env.PATH || '') },
+        stdio: ['pipe', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
+
+      let debugOutput = '';
+      let mountCheckInterval = null;
+
+      function finishMounted() {
+        if (resolved) return;
+        resolved = true;
+        if (mountCheckInterval) {
+          clearInterval(mountCheckInterval);
+          mountCheckInterval = null;
+        }
+        sshfsProcess = proc;
+        sshfsPid = proc.pid;
+        lastConfig = config;
+        lastBinaryPath = mountBinaryPath;
+        userDisconnect = false;
+        reconnecting = false;
+        reconnectAttempt = 0;
+        startHealthMonitor();
+        resolve({ pid: proc.pid });
       }
-      sshfsProcess = proc;
-      sshfsPid = proc.pid;
-      lastConfig = config;
-      lastBinaryPath = sshfsBinaryPath;
-      userDisconnect = false;
-      reconnecting = false;
-      reconnectAttempt = 0;
-      startHealthMonitor();
-      resolve({ pid: proc.pid });
-    }
 
-    // For password auth, pipe password to stdin
-    if (config.authMethod === 'password') {
-      proc.stdin.write(config.password + '\n');
-    }
-
-    proc.stderr.on('data', (data) => {
-      const msg = data.toString();
-      debugOutput += msg;
-      debugOutput = debugOutput.slice(-2048);
-
-      if (!resolved && msg.includes('has been started')) {
-        finishMounted();
+      // For sshfs password auth, pipe password to stdin (rclone gets it via args)
+      if (!useRclone && config.authMethod === 'password') {
+        proc.stdin.write(config.password + '\n');
       }
-    });
 
-    proc.stdout.on('data', (data) => {
-      const msg = data.toString();
-      debugOutput += msg;
-      debugOutput = debugOutput.slice(-2048);
-    });
+      proc.stderr.on('data', (data) => {
+        const msg = data.toString();
+        debugOutput += msg;
+        debugOutput = debugOutput.slice(-2048);
 
-    mountCheckInterval = setInterval(() => {
-      try {
-        if (!resolved && fs.existsSync(config.driveLetter + '\\')) {
+        if (!resolved && msg.includes('has been started')) {
           finishMounted();
         }
-      } catch {}
-    }, 500);
+      });
 
-    proc.on('error', (err) => {
-      if (!resolved) {
-        resolved = true;
+      proc.stdout.on('data', (data) => {
+        const msg = data.toString();
+        debugOutput += msg;
+        debugOutput = debugOutput.slice(-2048);
+      });
+
+      // Engine-agnostic success check: the drive letter appearing is the truth.
+      mountCheckInterval = setInterval(() => {
+        try {
+          if (!resolved && fs.existsSync(config.driveLetter + '\\')) {
+            finishMounted();
+          }
+        } catch {}
+      }, 500);
+
+      proc.on('error', (err) => {
+        if (!resolved) {
+          resolved = true;
+          if (mountCheckInterval) {
+            clearInterval(mountCheckInterval);
+            mountCheckInterval = null;
+          }
+          reject(new Error(`Failed to start mount engine: ${err.message}`));
+        }
+      });
+
+      proc.on('close', (code) => {
         if (mountCheckInterval) {
           clearInterval(mountCheckInterval);
           mountCheckInterval = null;
         }
-        reject(new Error(`Failed to start SSHFS: ${err.message}`));
-      }
-    });
-
-    proc.on('close', (code) => {
-      if (mountCheckInterval) {
-        clearInterval(mountCheckInterval);
-        mountCheckInterval = null;
-      }
-      if (!resolved) {
-        resolved = true;
-        if (debugOutput.includes('mount point in use') || debugOutput.includes('already in use')) {
-          reject(new Error('Drive letter is already in use. Choose a different one.'));
-        } else if (debugOutput.includes('Permission denied') || debugOutput.includes('authentication')) {
-          reject(new Error('Authentication failed during mount.'));
-        } else if (debugOutput.includes('No such file') || debugOutput.includes('no such identity')) {
-          reject(new Error('SSH key file not found.'));
+        if (!resolved) {
+          resolved = true;
+          const lower = debugOutput.toLowerCase();
+          if (lower.includes('mount point in use') || lower.includes('already in use') || lower.includes('mountpoint path already exists')) {
+            reject(new Error('Drive letter is already in use. Choose a different one.'));
+          } else if (lower.includes('permission denied') || lower.includes('authentication') || lower.includes('unable to authenticate')) {
+            reject(new Error('Authentication failed during mount.'));
+          } else if (lower.includes('no such file') || lower.includes('no such identity') || lower.includes('failed to read private key')) {
+            reject(new Error('SSH key file not found.'));
+          } else {
+            reject(new Error(`Mount engine exited with code ${code}. ${debugOutput.slice(-200)}`));
+          }
         } else {
-          reject(new Error(`SSHFS exited with code ${code}. ${debugOutput.slice(-200)}`));
+          // Process died after successful mount
+          cleanup();
+          scheduleReconnect('Mount process exited unexpectedly');
         }
-      } else {
-        // Process died after successful mount
-        cleanup();
-        scheduleReconnect('SSHFS process exited unexpectedly');
-      }
-    });
+      });
 
-    // Safety timeout
-    setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        if (mountCheckInterval) {
-          clearInterval(mountCheckInterval);
-          mountCheckInterval = null;
+      // Safety timeout
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          if (mountCheckInterval) {
+            clearInterval(mountCheckInterval);
+            mountCheckInterval = null;
+          }
+          proc.kill();
+          reject(new Error('Mount timed out after 30 seconds. Check your connection details.'));
         }
-        proc.kill();
-        reject(new Error('Mount timed out after 30 seconds. Check your connection details.'));
-      }
-    }, 30000);
+      }, 30000);
+    }
+
+    if (useRclone) {
+      const passwordStep = config.authMethod === 'password'
+        ? obscurePassword(mountBinaryPath, config.password)
+        : Promise.resolve(null);
+      passwordStep
+        .then((obscured) => launch(buildRcloneArgs(config, obscured)))
+        .catch((err) => {
+          if (!resolved) {
+            resolved = true;
+            reject(err);
+          }
+        });
+    } else {
+      launch(['-f', ...buildArgs(config)]);
+    }
   });
 }
 

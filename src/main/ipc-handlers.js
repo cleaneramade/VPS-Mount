@@ -224,11 +224,14 @@ function registerIpcHandlers() {
     await testConnection(normalizedConfig);
 
     const deps = cachedDeps || refreshDependencyCache();
-    if (!deps.sshfsBinaryPath) {
-      throw new Error('SSHFS-Win not found. Please install it first.');
+    // Prefer rclone (parallel transfers + write cache, much faster bulk copies);
+    // fall back to sshfs so the app still works if rclone is removed.
+    const mountBinary = deps.rcloneBinaryPath || deps.sshfsBinaryPath;
+    if (!mountBinary) {
+      throw new Error('No mount engine found. Please install rclone or SSHFS-Win first.');
     }
 
-    await sshfsManager.mount(normalizedConfig, deps.sshfsBinaryPath);
+    await sshfsManager.mount(normalizedConfig, mountBinary);
 
     const { setTrayConnected } = require('./main');
     setTrayConnected(true, normalizedConfig.host);

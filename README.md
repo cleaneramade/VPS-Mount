@@ -23,13 +23,14 @@ No command line. No SFTP clients. Your server, right in File Explorer.
 
 VPS Mount is a Windows desktop app that turns any SSH-accessible Linux server into a local drive letter. Open, edit, and drag-and-drop remote files exactly like local ones — in File Explorer, your IDE, or any other app. Built for developers, sysadmins, and anyone who wants their VPS to feel like a disk plugged into their PC.
 
-Under the hood it drives [SSHFS-Win](https://github.com/winfsp/sshfs-win) and [WinFsp](https://github.com/winfsp/winfsp) — the same battle-tested stack used across the industry — wrapped in a clean GUI with guided setup, so you never have to touch a terminal.
+Under the hood it drives [rclone](https://rclone.org) and [WinFsp](https://github.com/winfsp/winfsp) — with [SSHFS-Win](https://github.com/winfsp/sshfs-win) as an automatic fallback engine — wrapped in a clean GUI with guided setup, so you never have to touch a terminal.
 
 ## Features
 
 | | |
 |---|---|
 | 🖱️ **Mount in clicks** | Enter host, user, and credentials — get a drive letter (Z:, Y:, …) in File Explorer |
+| ⚡ **Fast transfer engine** | rclone with a local write cache and 16 parallel connections — drag-and-drop copies complete at disk speed and upload in the background |
 | 🔁 **Auto-reconnect** | Connection drops are detected and healed automatically — the mount comes back on its own |
 | 🛡️ **Frozen-mount watchdog** | Detects "zombie" mounts (drive frozen but process alive) and restores them without your help |
 | 🔑 **Password & SSH key auth** | Use whichever your server supports — keys get seamless in-channel reconnects |
@@ -37,17 +38,17 @@ Under the hood it drives [SSHFS-Win](https://github.com/winfsp/sshfs-win) and [W
 | 📌 **System tray integration** | Mount status, reconnect progress, and quick unmount at a glance |
 | 💾 **Remembers your last connection** | Host, port, username, and drive letter pre-filled next launch — passwords are **never** saved |
 
-## What's New in v1.2.0
+## What's New in v1.3.1
 
-This release is all about **connection persistence** — fixing the disconnects that could interrupt large file transfers:
+This release swaps the mount engine for a dramatically faster one:
 
-- **SSH keepalives** (`ServerAliveInterval`/`ServerAliveCountMax`/`TCPKeepAlive`) keep sessions alive through NAT and firewall idle timeouts — the #1 cause of drops during long transfers
-- **In-channel reconnect** for SSH key auth: a dropped SSH channel is repaired in place, without the drive ever disappearing
-- **Automatic remount** with exponential backoff (up to 10 attempts) if the SSHFS process dies — works for both password and key auth
-- **Zombie-mount watchdog**: the app now probes the drive itself, not just the process — a frozen mount is detected within ~1 minute and restored automatically
-- **Live reconnect status** in the app and tray: *Reconnecting… → Connected* — you always know what's happening
+- **rclone is now the preferred mount engine.** Files you drop on the drive land in a local cache instantly and upload in the background over **16 parallel connections** — bulk copies that crawled over sshfs finish in a fraction of the time (real-world benchmark: a 105-file project in ~17s)
+- **Interrupted uploads resume** — pending background uploads survive a disconnect or reboot via rclone's persistent VFS cache
+- **Proper Windows network-drive registration** (`--network-mode`) — the drive shows its true connection state in Explorer (no more red ❌ on a working drive)
+- **Automatic fallback to SSHFS-Win** if rclone isn't installed — the app works exactly as before
+- All v1.2.x resilience features (keepalives, auto-remount, zombie-mount watchdog, live status) carry over unchanged
 
-See the [release notes](https://github.com/cleaneramade/VPS-Mount/releases/tag/v1.2.0) for full details.
+See the [release notes](https://github.com/cleaneramade/VPS-Mount/releases/latest) for full details.
 
 ## Quick Start
 
@@ -90,7 +91,8 @@ TCPKeepAlive yes
 
 - **Windows 10 or 11 (x64)** — VPS Mount is Windows-only
 - **WinFsp 2.x** — required (guided install built in)
-- **SSHFS-Win 3.5+** — required (guided install built in)
+- **rclone** — recommended for the fast engine (`winget install Rclone.Rclone`)
+- **SSHFS-Win 3.5+** — fallback engine, used when rclone isn't installed (guided install built in)
 - Any Linux server reachable over **SSH** (port 22 or custom)
 
 ## Security Notes
@@ -104,7 +106,7 @@ Three things you should know before using VPS Mount:
 ## Known Limitations
 
 - Windows-only (x64)
-- Requires WinFsp and SSHFS-Win
+- Requires WinFsp, plus rclone (preferred) or SSHFS-Win (fallback)
 - SSH key passphrases are not supported (use password auth or an unencrypted key)
 - Remote paths are mounted case-insensitive (Windows filesystem behavior)
 - Installer is unsigned — Windows SmartScreen will warn on first run (*More info → Run anyway*)
@@ -138,7 +140,7 @@ Three things you should know before using VPS Mount:
 <summary><b>"Cannot unmount the drive"</b></summary>
 
 - Close any open files/Explorer windows on the mounted drive first
-- If it's still stuck, run: `taskkill /IM sshfs.exe /T /F`
+- If it's still stuck, run: `taskkill /IM rclone.exe /T /F` (or `taskkill /IM sshfs.exe /T /F` on the fallback engine)
 </details>
 
 ## Building from Source

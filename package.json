@@ -1,7 +1,7 @@
 {
   "name": "vps-mount",
-  "version": "1.2.1",
-  "description": "Mount VPS filesystem as a Windows drive letter via SSHFS",
+  "version": "1.3.1",
+  "description": "Mount VPS filesystem as a Windows drive letter via rclone (fast engine) with SSHFS fallback",
   "license": "MIT",
   "author": "Kadeem Johnson (Cleanera Made)",
   "repository": {
