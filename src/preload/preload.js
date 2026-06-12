@@ -72,4 +72,5 @@ contextBridge.exposeInMainWorld('vpsMount', {
   // Window controls
   windowMinimize: () => ipcRenderer.send('window-minimize'),
   windowClose: () => ipcRenderer.send('window-close'),
+  setErrorExpanded: (expanded) => ipcRenderer.invoke('set-error-expanded', expanded),
 });

@@ -792,12 +792,22 @@ function showError(msg) {
   const el = document.getElementById('connect-error-msg');
   if (!el) return;
   el.textContent = msg;
-  el.style.display = 'block';
+  // Expand the window first so the footer slot has room, then reveal it.
+  const expand = window.vpsMount.setErrorExpanded
+    ? window.vpsMount.setErrorExpanded(true)
+    : Promise.resolve();
+  Promise.resolve(expand).then(() => el.classList.add('is-visible'));
 }
 
 function clearError() {
   const el = document.getElementById('connect-error-msg');
-  if (el) el.style.display = 'none';
+  if (!el) return;
+  // Hide the footer first, then shrink the window back to compact.
+  el.classList.remove('is-visible');
+  el.textContent = '';
+  if (window.vpsMount.setErrorExpanded) {
+    window.vpsMount.setErrorExpanded(false);
+  }
 }
 
 function setFormDisabled(disabled) {

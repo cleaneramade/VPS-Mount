@@ -23,10 +23,15 @@ if (!gotLock) {
   });
 }
 
+// Compact height for normal use; the window grows to EXPANDED_HEIGHT while a
+// connect error message is showing so the footer slot appears below the form.
+const BASE_HEIGHT = 658;
+const EXPANDED_HEIGHT = 700;
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 520,
-    height: 660,
+    height: BASE_HEIGHT,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -113,6 +118,18 @@ app.whenReady().then(() => {
   ipcMain.on('window-minimize', () => mainWindow && mainWindow.minimize());
   ipcMain.on('window-close', () => {
     if (mainWindow) mainWindow.close();
+  });
+
+  // Grow/shrink the window so the connect-error footer has room only while
+  // a message is actually showing. setSize needs resizable temporarily on.
+  ipcMain.handle('set-error-expanded', (_event, expanded) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const targetHeight = expanded ? EXPANDED_HEIGHT : BASE_HEIGHT;
+    const [width, height] = mainWindow.getSize();
+    if (height === targetHeight) return;
+    mainWindow.setResizable(true);
+    mainWindow.setSize(width, targetHeight);
+    mainWindow.setResizable(false);
   });
 
   // Create system tray

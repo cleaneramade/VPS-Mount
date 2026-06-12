@@ -1,4 +1,4 @@
-const { spawn, exec } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -97,7 +97,7 @@ function obscurePassword(binaryPath, password) {
   });
 }
 
-function buildRcloneArgs({ username, host, remotePath, driveLetter, port, authMethod, keyFilePath }, obscuredPassword) {
+function buildRcloneArgs({ username, host, remotePath, driveLetter, port, authMethod, keyFilePath }) {
   const args = [
     'mount',
     // On-the-fly sftp remote — no rclone.conf needed, config comes from the GUI.
@@ -122,7 +122,9 @@ function buildRcloneArgs({ username, host, remotePath, driveLetter, port, authMe
   ];
 
   if (authMethod === 'password') {
-    args.push('--sftp-pass', obscuredPassword);
+    // The (obscured) password is supplied via the RCLONE_SFTP_PASS environment
+    // variable in launch(), never on the command line, so it can't be read from
+    // another process via `tasklist`/Process Explorer.
   } else {
     args.push('--sftp-key-file', keyFilePath);
   }
@@ -158,14 +160,28 @@ function mount(config, mountBinaryPath) {
       }
     }
 
+    // The mount engine attaches the SSH session to a Windows drive letter. If
+    // that letter is already taken — a leftover zombie mount, another app, or a
+    // real local disk — mounting onto it either fails or, worse, makes the
+    // success poll below fire instantly on the *pre-existing* drive and report a
+    // false "connected" that immediately drops. Refuse up front with a clear
+    // message. (During auto-reconnect this is expected while WinFsp frees the
+    // old letter, and the backoff simply retries.)
+    try {
+      if (fs.existsSync(config.driveLetter + '\\')) {
+        reject(new Error('Drive letter is already in use. Choose a different one.'));
+        return;
+      }
+    } catch {}
+
     const useRclone = isRcloneBinary(mountBinaryPath);
     let resolved = false;
 
-    function launch(args) {
+    function launch(args, extraEnv) {
       const binDir = path.dirname(mountBinaryPath);
 
       const proc = spawn(mountBinaryPath, args, {
-        env: { ...process.env, PATH: binDir + ';' + (process.env.PATH || '') },
+        env: { ...process.env, PATH: binDir + ';' + (process.env.PATH || ''), ...extraEnv },
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
       });
@@ -246,6 +262,8 @@ function mount(config, mountBinaryPath) {
             reject(new Error('Authentication failed during mount.'));
           } else if (lower.includes('no such file') || lower.includes('no such identity') || lower.includes('failed to read private key')) {
             reject(new Error('SSH key file not found.'));
+          } else if (lower.includes('refused') || lower.includes("couldn't connect") || lower.includes('no route') || lower.includes('i/o timeout') || lower.includes('handshake failed') || lower.includes('no such host')) {
+            reject(new Error('Could not reach the VPS to mount the drive. Check the server address, port, and network, then try again.'));
           } else {
             reject(new Error(`Mount engine exited with code ${code}. ${debugOutput.slice(-200)}`));
           }
@@ -264,7 +282,10 @@ function mount(config, mountBinaryPath) {
             clearInterval(mountCheckInterval);
             mountCheckInterval = null;
           }
-          proc.kill();
+          // Force-kill the whole process tree (rclone/sshfs may have spawned
+          // ssh.exe / WinFsp children). A soft proc.kill() can orphan them and
+          // leave the drive letter locked, breaking every later attempt.
+          killProcessTree(proc.pid);
           reject(new Error('Mount timed out after 30 seconds. Check your connection details.'));
         }
       }, 30000);
@@ -275,7 +296,10 @@ function mount(config, mountBinaryPath) {
         ? obscurePassword(mountBinaryPath, config.password)
         : Promise.resolve(null);
       passwordStep
-        .then((obscured) => launch(buildRcloneArgs(config, obscured)))
+        .then((obscured) => launch(
+          buildRcloneArgs(config),
+          obscured ? { RCLONE_SFTP_PASS: obscured } : undefined
+        ))
         .catch((err) => {
           if (!resolved) {
             resolved = true;
@@ -292,6 +316,20 @@ function isValidPid(pid) {
   return Number.isInteger(pid) && pid > 0;
 }
 
+// Force-kill a process and its children. The mount engines spawn helpers
+// (sshfs.exe -> ssh.exe, rclone -> WinFsp), so a soft kill can orphan them and
+// leave the drive letter locked. /T (tree) /F (force) is the only reliable teardown.
+function killProcessTree(pid) {
+  return new Promise((resolve) => {
+    if (!isValidPid(pid)) {
+      resolve();
+      return;
+    }
+    // execFile (no shell) with the pid as a discrete arg — never string-built.
+    execFile('taskkill', ['/PID', String(pid), '/T', '/F'], () => resolve());
+  });
+}
+
 function disconnect() {
   return new Promise((resolve) => {
     // User-initiated: suppress auto-remount and drop in-memory credentials.
@@ -301,7 +339,7 @@ function disconnect() {
     lastBinaryPath = null;
     stopHealthMonitor();
     if (isValidPid(sshfsPid)) {
-      exec(`taskkill /PID ${sshfsPid} /T /F`, () => {
+      killProcessTree(sshfsPid).then(() => {
         cleanup();
         resolve();
       });
@@ -385,7 +423,7 @@ function startHealthMonitor() {
       stopHealthMonitor();
       return;
     }
-    exec(`tasklist /FI "PID eq ${sshfsPid}" /NH`, (err, stdout) => {
+    execFile('tasklist', ['/FI', `PID eq ${sshfsPid}`, '/NH'], (err, stdout) => {
       if (err || !stdout.includes(String(sshfsPid))) {
         cleanup();
         scheduleReconnect('SSHFS process is no longer running');
@@ -415,11 +453,9 @@ function probeMount() {
       probeFailures += 1;
       if (probeFailures >= PROBE_MAX_FAILURES) {
         probeFailures = 0;
-        // Kill the zombie process; its 'close' handler runs cleanup() and
+        // Kill the zombie process tree; its 'close' handler runs cleanup() and
         // scheduleReconnect(), so the normal auto-remount path takes over.
-        if (isValidPid(sshfsPid)) {
-          exec(`taskkill /PID ${sshfsPid} /T /F`, () => {});
-        }
+        killProcessTree(sshfsPid);
       }
     })
     .finally(() => {

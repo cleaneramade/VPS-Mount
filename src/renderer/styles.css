@@ -226,11 +226,20 @@ body {
 
 .content.is-connect-screen {
   overflow: hidden;
-  padding-bottom: 16px;
+  padding-top: 10px;
+  /* No bottom padding: the footer slot centers itself in the full gap
+     between the card and the window edge via its auto margins. */
+  padding-bottom: 0;
 }
 
 .content.is-connect-screen .app-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+/* Tighter vertical rhythm on the connect screen so the header, form, and
+   card bottom all fit the fixed-height window with even breathing room. */
+.content.is-connect-screen .form-group {
+  margin-bottom: 12px;
 }
 
 /* ──── Header ──── */
@@ -286,7 +295,10 @@ body {
   flex-direction: column;
   padding-bottom: 0;
   align-items: flex-start;
-  gap: 12px;
+  /* Card pinned below the header so it never moves when the window expands
+     for an error; the footer centers in the leftover space via auto margins. */
+  justify-content: flex-start;
+  gap: 0;
 }
 
 #connect-screen .card,
@@ -328,7 +340,7 @@ body {
 }
 
 .connect-card-header {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 /* ──── Form ──── */
@@ -1292,10 +1304,18 @@ body {
 }
 
 .connect-error-footer {
+  /* Hidden (no reserved space) in the compact window; when a message shows,
+     the window expands (main process set-error-expanded) and equal auto
+     margins center this footer in the extra gap below the card. */
+  display: none;
   width: 100%;
   max-width: 560px;
-  margin: 12px auto 10px;
+  margin: auto;
   flex-shrink: 0;
+}
+
+.connect-error-footer.is-visible {
+  display: block;
 }
 
 /* ──── Setup screen ──── */
